@@ -1,6 +1,4 @@
-// app/(protected)/layout.tsx
-
-// app/(protected)/layout.tsx
+'use client';
 
 import { useState } from 'react';
 import React from 'react';
