@@ -12,11 +12,11 @@ export default function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);\
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  const toggleMobileSidebar = () => {\
-    setIsMobileSidebarOpen(!isMobileSidebarOpen);\
-  };\
+  const toggleMobileSidebar = () => {
+    setIsMobileSidebarOpen(!isMobileSidebarOpen);
+  };
 
   return (
     <div style={{ display: 'flex', height: '100vh' }}>
@@ -29,7 +29,7 @@ export default function ProtectedLayout({
       <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
         {/* Top Navbar */}
         <header style={{ height: '60px', backgroundColor: '#e0e0e0' }}>
-          <TopNavbar toggleMobileSidebar={toggleMobileSidebar} /> {/* Pass the toggle function */}
+          <TopNavbar />
         </header>
 
         {/* Page Content */}

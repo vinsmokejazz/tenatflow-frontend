@@ -1,4 +1,3 @@
-typescriptreact
 'use client';
 
 import React from 'react';
@@ -38,8 +37,7 @@ const TopNavbar: React.FC = () => {
         </div>
 
         {/* Dark Mode Toggle Placeholder */}
-          Dark Mode Toggle
-        </div>
+        Dark Mode Toggle
       </div>
     </header>
   );
