@@ -36,7 +36,8 @@ const chartConfig = {
   },
 } //satisfies ChartConfig // ChartConfig type is not exported from ui/chart for direct use here
 
-export function SampleChart() {
+export function SampleChart({ data }: { data?: any[] }) {
+  const chart = data && data.length > 0 ? data : chartData;
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow">
       <CardHeader>
@@ -48,7 +49,7 @@ export function SampleChart() {
           // @ts-ignore
           config={chartConfig} className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+            <BarChart data={chart} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
               <YAxis tickLine={false} axisLine={false} tickMargin={8} />

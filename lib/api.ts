@@ -112,6 +112,11 @@ class ApiClient {
       body: JSON.stringify(userData)
     })
   }
+
+  // Add a public method for custom requests
+  async customRequest(endpoint: string, options: RequestInit = {}) {
+    return this.request(endpoint, options);
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL)

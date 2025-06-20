@@ -1,3 +1,5 @@
+'use client';
+import { useEffect, useState } from 'react';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { SampleChart } from '@/components/dashboard/SampleChart';
 import { DollarSign, Users, Briefcase, TrendingUp, Activity } from 'lucide-react';
@@ -8,84 +10,120 @@ import {
   CardContent,
   CardDescription,
 } from "@/components/ui/card";
+import { apiClient } from '@/lib/api';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function DashboardPage() {
-  const recentActivities = [
-    { icon: Users, text: "New contact 'John Doe' added.", time: "2m ago" },
-    { icon: Briefcase, text: "Deal 'Alpha Project' moved to 'Negotiation'.", time: "1h ago" },
-    { icon: DollarSign, text: "Payment of $1,200 received from 'Beta Corp'.", time: "3h ago" },
-    { icon: Activity, text: "AI Insight: 'Q3 revenue projected to grow 15%'.", time: "5h ago" },
-    { icon: Users, text: "Task 'Follow up with Jane Smith' completed.", time: "1d ago" },
-  ];
+  const [kpi, setKpi] = useState<any>(null);
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filterRole, setFilterRole] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+
+  useEffect(() => {
+    async function fetchDashboard() {
+      setLoading(true);
+      setError(null);
+      try {
+        const stats = await apiClient.getDashboardStats();
+        setKpi(stats.kpi || {});
+        setChartData(stats.chartData || []);
+        const analytics = await apiClient.getAnalytics();
+        setActivities(analytics.activities || []);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load dashboard data');
+      }
+      setLoading(false);
+    }
+    fetchDashboard();
+  }, []);
 
   return (
     <div className="space-y-8 px-4 md:px-6 py-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
       </div>
+      {loading ? (
+        <p>Loading dashboard...</p>
+      ) : error ? (
+        <p className="text-red-500">{error}</p>
+      ) : (
+        <>
+        {/* KPI Section */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard
+            title="Total Revenue"
+            value={kpi?.totalRevenue || '$0'}
+            icon={DollarSign}
+            description={kpi?.revenueDescription}
+            trend={kpi?.revenueTrend}
+            trendDirection={kpi?.revenueTrendDirection}
+          />
+          <KpiCard
+            title="Active Clients"
+            value={kpi?.activeClients?.toString() || '0'}
+            icon={Users}
+            description={kpi?.clientsDescription}
+            trend={kpi?.clientsTrend}
+            trendDirection={kpi?.clientsTrendDirection}
+          />
+          <KpiCard
+            title="Open Deals"
+            value={kpi?.openDeals?.toString() || '0'}
+            icon={Briefcase}
+            description={kpi?.dealsDescription}
+            trend={kpi?.dealsTrend}
+            trendDirection={kpi?.dealsTrendDirection}
+          />
+          <KpiCard
+            title="Conversion Rate"
+            value={kpi?.conversionRate || '0%'}
+            icon={TrendingUp}
+            description={kpi?.conversionDescription}
+            trend={kpi?.conversionTrend}
+            trendDirection={kpi?.conversionTrendDirection}
+          />
+        </div>
 
-      {/* KPI Section */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          title="Total Revenue"
-          value="$45,231.89"
-          icon={DollarSign}
-          description="+20.1% from last month"
-          trend="+ $2,300 this week"
-          trendDirection="up"
-        />
-        <KpiCard
-          title="Active Clients"
-          value="235"
-          icon={Users}
-          description="+180.1% from last month"
-          trend="+ 12 new clients"
-          trendDirection="up"
-        />
-        <KpiCard
-          title="Open Deals"
-          value="72"
-          icon={Briefcase}
-          description="Value: $120,500"
-          trend="-3 from last week"
-          trendDirection="down"
-        />
-        <KpiCard
-          title="Conversion Rate"
-          value="12.5%"
-          icon={TrendingUp}
-          description="+2.5% from last month"
-          trend="Improved lead quality"
-          trendDirection="neutral"
-        />
-      </div>
+        {/* Chart + Activity Section */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <SampleChart data={chartData} />
 
-      {/* Chart + Activity Section */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <SampleChart />
-
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest updates in your CRM.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-4">
-            <ul className="space-y-4">
-              {recentActivities.map((item, index) => (
-                <li key={index} className="flex items-start sm:items-center space-x-3">
-                  <div className="p-2 bg-muted rounded-full">
-                    <item.icon className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm leading-snug">{item.text}</p>
-                    <p className="text-xs text-muted-foreground">{item.time}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      </div>
+          <Card className="shadow-sm hover:shadow-md transition-shadow">
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>Latest updates in your CRM.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-4">
+              <ul className="space-y-4">
+                {activities.length === 0 ? (
+                  <li className="text-muted-foreground">No recent activity.</li>
+                ) : activities.map((item, index) => (
+                  <li key={index} className="flex items-start sm:items-center space-x-3">
+                    <div className="p-2 bg-muted rounded-full">
+                      {/* Use icon mapping if available, fallback to Activity */}
+                      <Activity className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm leading-snug">{item.text}</p>
+                      <p className="text-xs text-muted-foreground">{item.time}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+        </>
+      )}
     </div>
   );
 }

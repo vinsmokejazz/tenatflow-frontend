@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import React from 'react';
-import Sidebar from '@/components/sidebar'; // Import Sidebar
-import TopNavbar from '@/components/top-navbar'; // Import TopNavbar
+import Sidebar from '@/components/sidebar'; // Use the modern Sidebar
+import TopNavbar from '@/components/top-navbar';
 
 export default function ProtectedLayout({
   children,
@@ -17,21 +17,15 @@ export default function ProtectedLayout({
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
+    <div className="flex min-h-screen bg-background text-foreground">
       {/* Sidebar */}
-      <aside style={{ width: '250px', backgroundColor: '#f0f0f0' }}>
-         <Sidebar /> {/* Use the Sidebar component */}
-      </aside>
-
+      <Sidebar />
       {/* Main Content Area */}
-      <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+      <div className="flex flex-col flex-1 min-h-screen">
         {/* Top Navbar */}
-        <header style={{ height: '60px', backgroundColor: '#e0e0e0' }}>
-          <TopNavbar />
-        </header>
-
+        <TopNavbar />
         {/* Page Content */}
-        <main style={{ flexGrow: 1, overflowY: 'auto', padding: '20px' }}>
+        <main className="flex-1 overflow-y-auto p-6 bg-background">
           {children}
         </main>
       </div>
