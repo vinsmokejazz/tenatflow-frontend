@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import Link from 'next/link';
 import { useRouter } from 'next/navigation'
 import { Building2, Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -23,7 +23,7 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const { signUp } = useAuth()
+  const { signUp, supabase } = useAuth()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,8 +54,13 @@ export default function SignUpPage() {
       if (error) {
         toast.error(error.message)
       } else {
-        toast.success('Account created successfully! Please check your email to verify your account.')
-        router.push('/signin')
+        // Check if email confirmation is required by Supabase settings
+        if (supabase && supabase.auth.session?.user?.user_metadata?.email_verified === false) {
+          toast.success('Account created successfully! Please check your email to verify your account.');
+        } else {
+          toast.success('Account created successfully!');
+        }
+        router.push('/signin');
       }
     } catch (error) {
       toast.error('An unexpected error occurred')

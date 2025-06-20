@@ -11,6 +11,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<any>
   signUp: (email: string, password: string, userData: any) => Promise<any>
   signOut: () => Promise<void>
+  hasRole: (role?: 'admin' | 'staff') => boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -66,12 +67,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut()
   }
 
+  const hasRole = (role?: 'admin' | 'staff'): boolean => {
+    if (!user) {
+      return false;
+    }
+    if (role) {
+      return user.user_metadata?.role === role;
+    }
+    return true; // Authenticated user if no specific role is required
+  };
+
   const value = {
     user,
     loading,
     signIn,
     signUp,
-    signOut
+    signOut,
+    hasRole,
   }
 
   return (
