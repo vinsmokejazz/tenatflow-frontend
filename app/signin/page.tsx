@@ -39,79 +39,83 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-emerald-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#0a0a17] via-[#131324] to-[#18182a] flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
-        <div className="bg-card rounded-2xl shadow-xl border border-border p-8">
-          <div className="text-center mb-8">
-            <Link href="/" className="inline-flex items-center space-x-2 mb-6">
-              <Building2 className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold text-foreground">TenantFlow</span>
-            </Link>
-            <h1 className="text-2xl font-bold text-foreground mb-2">Welcome back</h1>
-            <p className="text-muted-foreground">Sign in to your account to continue</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full"
-              />
+        <div className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-xl p-8 relative overflow-hidden">
+          {/* Subtle inner glow */}
+          <div className="pointer-events-none absolute inset-0 rounded-2xl ring-2 ring-inset ring-purple-400/10 blur-[2px]" />
+          <div className="relative z-10">
+            <div className="text-center mb-8">
+              <Link href="/" className="inline-flex items-center space-x-2 mb-6">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-yellow-400 flex items-center justify-center" />
+                <span className="text-2xl font-bold text-white">TenantFlow</span>
+              </Link>
+              <h1 className="text-2xl font-bold text-white mb-2">Welcome back</h1>
+              <p className="text-[#cfcfd6]">Sign in to your account to continue</p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-[#cfcfd6]">Email</Label>
                 <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full pr-10"
+                  className="w-full bg-transparent border border-[#33334d] text-white placeholder-[#8888aa] focus:ring-1 focus:ring-purple-500"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between">
-              <Link
-                href="/forgot-password"
-                className="text-sm text-primary hover:underline"
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-[#cfcfd6]">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="w-full pr-10 bg-transparent border border-[#33334d] text-white placeholder-[#8888aa] focus:ring-1 focus:ring-purple-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8888aa]"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-purple-400 hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-purple-600 to-purple-400 hover:from-purple-700 hover:to-purple-500 text-white font-semibold text-md rounded-lg py-3 transition duration-200 mt-2 shadow-md"
+                disabled={loading}
               >
-                Forgot password?
-              </Link>
+                {loading ? 'Signing in...' : 'Sign In'}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <p className="text-[#cfcfd6]">
+                Don&apos;t have an account?{' '}
+                <Link href="/signup" className="text-purple-400 hover:underline font-medium">
+                  Sign up
+                </Link>
+              </p>
             </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700"
-              disabled={loading}
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-muted-foreground">
-              Don&apos;t have an account?{' '}
-              <Link href="/signup" className="text-primary hover:underline font-medium">
-                Sign up
-              </Link>
-            </p>
           </div>
         </div>
       </div>

@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link';
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Building2, Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,13 +12,14 @@ import { toast } from 'sonner'
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
     firstName: '',
     lastName: '',
-    companyName: '',
-    role: 'admin'
+    businessName: '',
+    email: '',
+    skills: '',
+    password: '',
+    confirmPassword: '',
+    agree: false,
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -28,216 +29,188 @@ export default function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match')
-      return
-    }
-
-    // Check password requirements
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
-    if (!passwordRegex.test(formData.password)) {
-      toast.error('Password must be at least 8 characters and contain uppercase, lowercase, number, and special character')
-      return
-    }
-
+    if (!formData.agree) return toast.error('You must agree to terms & conditions')
+    if (formData.password !== formData.confirmPassword)
+      return toast.error('Passwords do not match')
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+    if (!passwordRegex.test(formData.password))
+      return toast.error('Password must contain upper, lower, number & special char')
     setLoading(true)
-
     try {
       const userData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        business_name: formData.businessName,
         name: `${formData.firstName} ${formData.lastName}`.trim(),
-        business_name: formData.companyName,
-        role: formData.role
+        skills: formData.skills,
       }
-
       const { data, error } = await signUp(formData.email, formData.password, userData)
-
-      if (error) {
-        toast.error(error.message)
-      } else {
-        // Check if we have backend registration success
-        if (data?.backend) {
-          if (data.userExists) {
-            toast.success('Account updated successfully! You can now sign in.')
-          } else {
-            toast.success('Account created successfully! You can now sign in.')
-          }
-          router.push('/signin')
-        } else {
-          toast.error('Registration failed. Please try again.')
-        }
-      }
+      if (error) toast.error(error.message)
+      else if (data?.backend) {
+        toast.success('Account created! You can now sign in.')
+        router.push('/signin')
+      } else toast.error('Registration failed. Try again.')
     } catch (error) {
-      console.error('Signup error:', error)
-      if (error instanceof Error) {
-        toast.error(error.message)
-      } else {
-        toast.error('An unexpected error occurred')
-      }
+      toast.error(error instanceof Error ? error.message : 'Unexpected error')
     } finally {
       setLoading(false)
     }
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
+    const { name, value, type, checked } = e.target
+    setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value })
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-emerald-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-slate-700">
-          <div className="text-center mb-8">
-            <Link href="/" className="inline-flex items-center space-x-2 mb-6">
-              <Building2 className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold text-foreground">TenantFlow</span>
-            </Link>
-            <h1 className="text-2xl font-bold text-foreground mb-2">Create your account</h1>
-            <p className="text-muted-foreground">Start your 14-day free trial today</p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-[#0d0d1f] via-[#161625] to-[#1e1e30] flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-4xl grid md:grid-cols-2 rounded-3xl overflow-hidden shadow-xl backdrop-blur-xl">
+        {/* Illustration */}
+        <div className="hidden md:flex items-center justify-center bg-[#1a1a2e]">
+          <img
+            src="images/Screenshot 2025-06-21 222848.png"
+            alt="Signup Illustration"
+            className="w-full h-full object-cover"
+          />
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Form Card */}
+        <div className="bg-white/15 backdrop-blur-xl border border-white/10 rounded-none md:rounded-r-3xl flex flex-col justify-center p-8 md:p-12 w-full">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 to-yellow-400 flex items-center justify-center" />
+            <span className="text-white text-xl font-bold">TenantFlow</span>
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-2">Create your account</h2>
+          <p className="text-sm text-[#cfcfd6] mb-8">Start your free trial today</p>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
+              <div>
+                <Label htmlFor="firstName" className="text-[#cfcfd6]">First Name</Label>
                 <Input
                   id="firstName"
                   name="firstName"
-                  type="text"
-                  required
                   value={formData.firstName}
                   onChange={handleInputChange}
-                  placeholder="John"
+                  required
+                  placeholder="eg. Bruce"
+                  className="mt-2 bg-transparent border border-[#33334d] text-white placeholder-[#8888aa] focus:ring-1 focus:ring-purple-500"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
+              <div>
+                <Label htmlFor="lastName" className="text-[#cfcfd6]">Last Name</Label>
                 <Input
                   id="lastName"
                   name="lastName"
-                  type="text"
-                  required
                   value={formData.lastName}
                   onChange={handleInputChange}
-                  placeholder="Doe"
+                  required
+                  placeholder="eg. Wayne"
+                  className="mt-2 bg-transparent border border-[#33334d] text-white placeholder-[#8888aa] focus:ring-1 focus:ring-purple-500"
                 />
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+            <div>
+              <Label htmlFor="businessName" className="text-[#cfcfd6]">Business Name</Label>
+              <Input
+                id="businessName"
+                name="businessName"
+                value={formData.businessName}
+                onChange={handleInputChange}
+                required
+                placeholder="eg. Wayne Enterprises"
+                className="mt-2 bg-transparent border border-[#33334d] text-white placeholder-[#8888aa] focus:ring-1 focus:ring-purple-500"
+              />
+            </div>
+            <div>
+              <Label htmlFor="email" className="text-[#cfcfd6]">Email</Label>
               <Input
                 id="email"
                 name="email"
-                type="email"
-                required
                 value={formData.email}
                 onChange={handleInputChange}
-                placeholder="john@company.com"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="companyName">Company Name</Label>
-              <Input
-                id="companyName"
-                name="companyName"
-                type="text"
                 required
-                value={formData.companyName}
-                onChange={handleInputChange}
-                placeholder="Your Company"
+                type="email"
+                placeholder="you@example.com"
+                className="mt-2 bg-transparent border border-[#33334d] text-white placeholder-[#8888aa] focus:ring-1 focus:ring-purple-500"
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="Enter your password"
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+    
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="password" className="text-[#cfcfd6]">Password</Label>
+                <div className="relative mt-2">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    required
+                    className="bg-transparent border border-[#33334d] text-white placeholder-[#8888aa] pr-10 focus:ring-1 focus:ring-purple-500"
+                    placeholder="Password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8888aa]"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="confirmPassword" className="text-[#cfcfd6]">Confirm</Label>
+                <div className="relative mt-2">
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    required
+                    className="bg-transparent border border-[#33334d] text-white placeholder-[#8888aa] pr-10 focus:ring-1 focus:ring-purple-500"
+                    placeholder="Confirm Password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8888aa]"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <div className="relative">
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  placeholder="Confirm your password"
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="agree"
+                name="agree"
+                type="checkbox"
+                checked={formData.agree}
+                onChange={handleInputChange}
+                className="accent-purple-500 w-4 h-4 rounded"
+                required
+              />
+              <Label htmlFor="agree" className="text-[#b0b0c3] text-sm">
+                I agree to the terms & conditions
+              </Label>
             </div>
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700"
               disabled={loading}
+              className="w-full bg-gradient-to-r from-purple-600 to-purple-400 hover:from-purple-700 hover:to-purple-500 text-white font-semibold text-md rounded-lg py-3 transition duration-200 mt-2 shadow-md"
             >
-              {loading ? 'Creating Account...' : 'Create Account'}
+              {loading ? 'Creating Account...' : 'Register Account'}
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Already have an account?{' '}
-              <Link href="/signin" className="text-primary hover:underline font-medium">
-                Sign in
-              </Link>
-            </p>
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-border">
-            <Link
-              href="/"
-              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to homepage
-            </Link>
-          </div>
-        </div>
-
-        <div className="mt-8 text-center">
-          <p className="text-xs text-muted-foreground">
-            By creating an account, you agree to our{' '}
-            <Link href="/terms" className="text-primary hover:underline">
-              Terms of Service
-            </Link>{' '}
-            and{' '}
-            <Link href="/privacy" className="text-primary hover:underline">
-              Privacy Policy
-            </Link>
+          <p className="text-xs text-center text-[#cfcfd6] mt-6">
+            Already have an account?{' '}
+            <Link href="/signin" className="text-purple-400 hover:underline">Log in</Link>
           </p>
         </div>
       </div>
