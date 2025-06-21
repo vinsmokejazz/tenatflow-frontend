@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -80,7 +81,10 @@ const ProfilePage: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await apiClient.updateUser(form);
+      if (!backendUser) {
+        throw new Error('User not found');
+      }
+      await apiClient.updateUserById(backendUser.id, form);
       toast({ title: 'Profile updated', description: 'Your profile has been updated successfully.' });
       setEditMode(false);
       // Refresh user data
@@ -126,19 +130,18 @@ const ProfilePage: React.FC = () => {
 
   const getRoleBadge = (role: string) => {
     const roleConfig = {
-      admin: { label: 'Admin', color: 'bg-red-100 text-red-800 border-red-200' },
-      staff: { label: 'Staff', color: 'bg-blue-100 text-blue-800 border-blue-200' },
-      manager: { label: 'Manager', color: 'bg-purple-100 text-purple-800 border-purple-200' },
-      user: { label: 'User', color: 'bg-green-100 text-green-800 border-green-200' }
+      admin: { label: 'Admin', variant: 'destructive' as const },
+      staff: { label: 'Staff', variant: 'secondary' as const },
+      user: { label: 'User', variant: 'default' as const }
     };
     
     const config = roleConfig[role as keyof typeof roleConfig] || { 
       label: role, 
-      color: 'bg-gray-100 text-gray-800 border-gray-200' 
+      variant: 'outline' as const
     };
     
     return (
-      <Badge className={`border ${config.color}`}>
+      <Badge variant={config.variant}>
         {config.label}
       </Badge>
     );
@@ -157,9 +160,14 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto py-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <User className="h-8 w-8 text-primary" />
+            </div>
+            Profile
+          </h1>
           <p className="text-muted-foreground mt-1">Manage your account settings and preferences</p>
         </div>
         <div className="flex items-center gap-2">
@@ -181,8 +189,8 @@ const ProfilePage: React.FC = () => {
                 <CardDescription>Your personal details and contact information</CardDescription>
               </div>
               {!editMode && (
-                <Button variant="outline" size="sm" onClick={() => setEditMode(true)}>
-                  <Edit className="h-4 w-4 mr-2" />
+                <Button variant="outline" size="sm" onClick={() => setEditMode(true)} className="flex items-center gap-2">
+                  <Edit className="h-4 w-4" />
                   Edit
                 </Button>
               )}
@@ -192,7 +200,7 @@ const ProfilePage: React.FC = () => {
                 <form onSubmit={handleSave} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block mb-2 text-sm font-medium" htmlFor="name">Full Name</label>
+                      <Label htmlFor="name">Full Name</Label>
                       <Input 
                         id="name" 
                         name="name" 
@@ -203,7 +211,7 @@ const ProfilePage: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block mb-2 text-sm font-medium" htmlFor="company">Company</label>
+                      <Label htmlFor="company">Company</Label>
                       <Input 
                         id="company" 
                         name="company" 
@@ -213,7 +221,7 @@ const ProfilePage: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block mb-2 text-sm font-medium" htmlFor="phone">Phone Number</label>
+                      <Label htmlFor="phone">Phone Number</Label>
                       <Input 
                         id="phone" 
                         name="phone" 
@@ -223,7 +231,7 @@ const ProfilePage: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block mb-2 text-sm font-medium" htmlFor="address">Address</label>
+                      <Label htmlFor="address">Address</Label>
                       <Input 
                         id="address" 
                         name="address" 
@@ -234,63 +242,61 @@ const ProfilePage: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex gap-2 pt-4">
-                    <Button type="submit" disabled={loading}>
+                    <Button type="submit" disabled={loading} className="flex items-center gap-2">
                       {loading ? (
                         <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                           Saving...
                         </>
                       ) : (
                         <>
-                          <Save className="h-4 w-4 mr-2" />
+                          <Save className="h-4 w-4" />
                           Save Changes
                         </>
                       )}
                     </Button>
-                    <Button type="button" variant="outline" onClick={() => setEditMode(false)}>
-                      <X className="h-4 w-4 mr-2" />
+                    <Button type="button" variant="outline" onClick={() => setEditMode(false)} className="flex items-center gap-2">
+                      <X className="h-4 w-4" />
                       Cancel
                     </Button>
                   </div>
                 </form>
               ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <User className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Full Name</p>
-                        <p className="font-medium">{form.name || 'Not provided'}</p>
-                      </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-950/30 rounded-lg">
+                      <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                        <Mail className="h-5 w-5 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Email Address</p>
-                        <p className="font-medium">{user?.email}</p>
-                      </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Full Name</p>
+                      <p className="font-medium">{form.name || 'Not provided'}</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                        <Phone className="h-5 w-5 text-purple-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Phone Number</p>
-                        <p className="font-medium">{form.phone || 'Not provided'}</p>
-                      </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 dark:bg-green-950/30 rounded-lg">
+                      <Mail className="h-5 w-5 text-green-600 dark:text-green-400" />
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                        <MapPin className="h-5 w-5 text-orange-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Address</p>
-                        <p className="font-medium">{form.address || 'Not provided'}</p>
-                      </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Email Address</p>
+                      <p className="font-medium">{user?.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-950/30 rounded-lg">
+                      <Phone className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Phone Number</p>
+                      <p className="font-medium">{form.phone || 'Not provided'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-100 dark:bg-orange-950/30 rounded-lg">
+                      <MapPin className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Address</p>
+                      <p className="font-medium">{form.address || 'Not provided'}</p>
                     </div>
                   </div>
                 </div>
@@ -309,8 +315,8 @@ const ProfilePage: React.FC = () => {
                 <CardDescription>Manage your password and security settings</CardDescription>
               </div>
               {!passwordEditMode && (
-                <Button variant="outline" size="sm" onClick={() => setPasswordEditMode(true)}>
-                  <Edit className="h-4 w-4 mr-2" />
+                <Button variant="outline" size="sm" onClick={() => setPasswordEditMode(true)} className="flex items-center gap-2">
+                  <Edit className="h-4 w-4" />
                   Change Password
                 </Button>
               )}
@@ -318,81 +324,78 @@ const ProfilePage: React.FC = () => {
             <CardContent>
               {passwordEditMode ? (
                 <form onSubmit={handlePasswordUpdate} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block mb-2 text-sm font-medium" htmlFor="currentPassword">Current Password</label>
-                      <div className="relative">
-                        <Input 
-                          id="currentPassword" 
-                          name="currentPassword" 
-                          type={showPassword ? "text" : "password"}
-                          value={passwordForm.currentPassword} 
-                          onChange={handlePasswordChange} 
-                          placeholder="Enter current password"
-                          required 
-                        />
-                        <button
-                          type="button"
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                          onClick={() => setShowPassword(!showPassword)}
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block mb-2 text-sm font-medium" htmlFor="newPassword">New Password</label>
-                      <Input 
-                        id="newPassword" 
-                        name="newPassword" 
-                        type={showPassword ? "text" : "password"}
-                        value={passwordForm.newPassword} 
-                        onChange={handlePasswordChange} 
-                        placeholder="Enter new password"
-                        required 
+                  <div>
+                    <Label htmlFor="currentPassword">Current Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="currentPassword"
+                        name="currentPassword"
+                        type={showPassword ? 'text' : 'password'}
+                        value={passwordForm.currentPassword}
+                        onChange={handlePasswordChange}
+                        placeholder="Enter your current password"
+                        required
                       />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-0 right-0 h-full px-3"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
                     </div>
                   </div>
                   <div>
-                    <label className="block mb-2 text-sm font-medium" htmlFor="confirmPassword">Confirm New Password</label>
-                    <Input 
-                      id="confirmPassword" 
-                      name="confirmPassword" 
-                      type={showPassword ? "text" : "password"}
-                      value={passwordForm.confirmPassword} 
-                      onChange={handlePasswordChange} 
-                      placeholder="Confirm new password"
-                      required 
+                    <Label htmlFor="newPassword">New Password</Label>
+                    <Input
+                      id="newPassword"
+                      name="newPassword"
+                      type="password"
+                      value={passwordForm.newPassword}
+                      onChange={handlePasswordChange}
+                      placeholder="Enter a new password"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                    <Input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type="password"
+                      value={passwordForm.confirmPassword}
+                      onChange={handlePasswordChange}
+                      placeholder="Confirm your new password"
+                      required
                     />
                   </div>
                   <div className="flex gap-2 pt-4">
-                    <Button type="submit" disabled={passwordLoading}>
+                    <Button type="submit" disabled={passwordLoading} className="flex items-center gap-2">
                       {passwordLoading ? (
                         <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                           Updating...
                         </>
                       ) : (
                         <>
-                          <Save className="h-4 w-4 mr-2" />
+                          <Save className="h-4 w-4" />
                           Update Password
                         </>
                       )}
                     </Button>
-                    <Button type="button" variant="outline" onClick={() => {
-                      setPasswordEditMode(false);
-                      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-                    }}>
-                      <X className="h-4 w-4 mr-2" />
+                    <Button type="button" variant="outline" onClick={() => setPasswordEditMode(false)} className="flex items-center gap-2">
+                      <X className="h-4 w-4" />
                       Cancel
                     </Button>
                   </div>
                 </form>
               ) : (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                      <Shield className="h-5 w-5 text-yellow-600" />
+                    <div className="p-2 bg-yellow-100 dark:bg-yellow-950/30 rounded-lg">
+                      <Shield className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Password</p>
@@ -400,8 +403,8 @@ const ProfilePage: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                      <Calendar className="h-5 w-5 text-green-600" />
+                    <div className="p-2 bg-green-100 dark:bg-green-950/30 rounded-lg">
+                      <Calendar className="h-5 w-5 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Last Updated</p>
@@ -424,45 +427,43 @@ const ProfilePage: React.FC = () => {
             </CardHeader>
             <CardContent>
               {business ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <Building2 className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Business Name</p>
-                        <p className="font-medium">{business.name || 'Not provided'}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-950/30 rounded-lg">
+                      <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Business Name</p>
+                      <p className="font-medium">{business.name || 'Not provided'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-950/30 rounded-lg">
+                      <User className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Your Role</p>
+                      <div className="flex items-center gap-2">
+                        {getRoleBadge(backendUser?.role || user?.user_metadata?.role || 'user')}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                        <User className="h-5 w-5 text-purple-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Your Role</p>
-                        <div className="flex items-center gap-2">
-                          {getRoleBadge(backendUser?.role || user?.user_metadata?.role || 'user')}
-                        </div>
-                      </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 dark:bg-green-950/30 rounded-lg">
+                      <Calendar className="h-5 w-5 text-green-600 dark:text-green-400" />
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                        <Calendar className="h-5 w-5 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Member Since</p>
-                        <p className="font-medium">{formatDate(user?.created_at)}</p>
-                      </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Member Since</p>
+                      <p className="font-medium">{formatDate(user?.created_at)}</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                        <MapPin className="h-5 w-5 text-orange-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Business Address</p>
-                        <p className="font-medium">{business.address || 'Not provided'}</p>
-                      </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-100 dark:bg-orange-950/30 rounded-lg">
+                      <MapPin className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Business Address</p>
+                      <p className="font-medium">{business.address || 'Not provided'}</p>
                     </div>
                   </div>
                 </div>
@@ -490,8 +491,8 @@ const ProfilePage: React.FC = () => {
               {subscription ? (
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                      <CreditCard className="h-5 w-5 text-green-600" />
+                    <div className="p-2 bg-green-100 dark:bg-green-950/30 rounded-lg">
+                      <CreditCard className="h-5 w-5 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Current Plan</p>
@@ -499,8 +500,8 @@ const ProfilePage: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <Calendar className="h-5 w-5 text-blue-600" />
+                    <div className="p-2 bg-blue-100 dark:bg-blue-950/30 rounded-lg">
+                      <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Next Billing</p>
@@ -526,17 +527,17 @@ const ProfilePage: React.FC = () => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Account Status</span>
-                  <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>
+                  <Badge variant="success">Active</Badge>
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Email Verified</span>
-                  <Badge className="bg-green-100 text-green-800 border-green-200">Yes</Badge>
+                  <Badge variant="success">Yes</Badge>
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Two-Factor Auth</span>
-                  <Badge className="bg-gray-100 text-gray-800 border-gray-200">Not Enabled</Badge>
+                  <Badge variant="outline">Not Enabled</Badge>
                 </div>
               </div>
             </CardContent>

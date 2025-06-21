@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Target, Users, Edit, Trash2, Plus, Eye, Calendar, TrendingUp, CheckCircle, Clock, XCircle, User } from 'lucide-react';
+import { Target, Users, Edit, Trash2, Plus, Eye, Calendar, TrendingUp, CheckCircle, Clock, XCircle, User, Search, Phone } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,6 +10,7 @@ import { apiClient } from '@/lib/api';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
+import { Button } from '@/components/ui/button';
 
 const LeadsPage: React.FC = () => {
   const [loading, setLoading] = React.useState(true);
@@ -81,7 +82,12 @@ const LeadsPage: React.FC = () => {
 
   // Handle form submit
   const handleFormSubmit = async (e: React.FormEvent) => {
+    console.log('=== LEAD FORM SUBMISSION STARTED ===');
     e.preventDefault();
+    console.log('Form submission started');
+    console.log('Form data:', form);
+    console.log('User role:', hasRole('admin') ? 'admin' : 'staff');
+    
     setFormLoading(true);
     setFormError(null);
     try {
@@ -94,19 +100,42 @@ const LeadsPage: React.FC = () => {
       const payload = { ...form };
       if (!hasRole('admin')) {
         delete payload.assignedTo;
-      } else if (payload.assignedTo === 'unassigned') {
-        payload.assignedTo = undefined;
+      } else {
+        if (payload.assignedTo === 'unassigned') {
+          payload.assignedTo = undefined;
+        } else {
+          payload.assignedTo = payload.assignedTo;
+        }
       }
+      
+      console.log('Payload being sent to API:', payload);
+      
       if (editLead) {
-        await apiClient.updateLead(editLead.id, payload);
+        console.log('Updating lead with ID:', editLead.id);
+        const updatedLead = await apiClient.updateLead(editLead.id, payload);
+        console.log('Updated lead response:', updatedLead);
+        console.log('Updated lead assignedTo:', updatedLead.assignedTo);
+        console.log('Updated lead assignedUser:', updatedLead.assignedUser);
+        
+        setLeads(prevLeads => 
+          prevLeads.map(lead => 
+            lead.id === editLead.id ? updatedLead : lead
+          )
+        );
         toast({ title: 'Lead updated', description: 'Lead updated successfully.' });
       } else {
-        await apiClient.createLead(payload);
+        console.log('Creating new lead');
+        const newLead = await apiClient.createLead(payload);
+        console.log('Created lead response:', newLead);
+        console.log('Created lead assignedTo:', newLead.assignedTo);
+        console.log('Created lead assignedUser:', newLead.assignedUser);
+        
+        setLeads(prevLeads => [newLead, ...prevLeads]);
         toast({ title: 'Lead created', description: 'Lead created successfully.' });
       }
       setModalOpen(false);
-      fetchData();
     } catch (err: any) {
+      console.error('Error in form submission:', err);
       setFormError(err.message || 'Failed to save lead');
     }
     setFormLoading(false);
@@ -143,7 +172,7 @@ const LeadsPage: React.FC = () => {
       filtered = filtered.filter(lead => {
         const clientName = lead.client?.name || '';
         const notes = lead.notes || '';
-        const assignedStaffName = staff.find(s => s.id === lead.assignedTo)?.name || '';
+        const assignedStaffName = lead.assignedUser?.name || (lead.assignedTo ? staff.find(s => s.id === lead.assignedTo)?.name : '') || 'Unassigned';
         return (
           clientName.toLowerCase().includes(searchLower) ||
           lead.status.toLowerCase().includes(searchLower) ||
@@ -193,10 +222,53 @@ const LeadsPage: React.FC = () => {
   };
 
   // Get assigned staff name
-  const getAssignedStaffName = (assignedTo: string) => {
-    if (!assignedTo) return 'Unassigned';
+  const getAssignedStaffName = (assignedTo: string | null, assignedUser?: any) => {
+    if (!assignedTo || assignedTo === 'unassigned') return 'Unassigned';
+    // Use assignedUser data from API response if available
+    if (assignedUser) {
+      return assignedUser.name || 'Unknown Staff';
+    }
+    // Fallback to local staff array lookup
     const staffMember = staff.find(s => s.id === assignedTo);
     return staffMember?.name || 'Unknown Staff';
+  };
+
+  const formatStatus = (status: string) => {
+    const stageConfig = {
+      new: { 
+        label: 'New', 
+        color: 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+        icon: <Search className="h-4 w-4" />
+      },
+      contacted: { 
+        label: 'Contacted', 
+        color: 'bg-yellow-50 dark:bg-yellow-950/20 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800',
+        icon: <Phone className="h-4 w-4" />
+      },
+      qualified: { 
+        label: 'Qualified', 
+        color: 'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800',
+        icon: <CheckCircle className="h-4 w-4" />
+      },
+      lost: {
+        label: 'Lost',
+        color: 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800',
+        icon: <XCircle className="h-4 w-4" />
+      }
+    };
+    
+    const config = stageConfig[status.toLowerCase() as keyof typeof stageConfig] || { 
+      label: status, 
+      color: 'bg-gray-50 dark:bg-gray-950/20 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-800',
+      icon: <Target className="h-4 w-4" />
+    };
+    
+    return (
+      <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border ${config.color}`}>
+        {config.icon}
+        {config.label}
+      </span>
+    );
   };
 
   return (
@@ -229,12 +301,12 @@ const LeadsPage: React.FC = () => {
             onChange={e => setSearch(e.target.value)}
             className="sm:w-64"
           />
-          <button
-            className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium shadow hover:bg-primary/90 transition-colors flex items-center gap-2"
+          <Button
             onClick={openAddModal}
+            className="flex items-center gap-2"
           >
             <Plus className="h-4 w-4" /> Add Lead
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -248,8 +320,8 @@ const LeadsPage: React.FC = () => {
               </p>
               <p className="text-2xl font-bold">{totalLeads}</p>
             </div>
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Target className="h-6 w-6 text-blue-600" />
+            <div className="p-2 bg-blue-100 dark:bg-blue-950/30 rounded-lg">
+              <Target className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
         </div>
@@ -260,20 +332,8 @@ const LeadsPage: React.FC = () => {
               <p className="text-sm font-medium text-muted-foreground">New Leads</p>
               <p className="text-2xl font-bold">{newLeads}</p>
             </div>
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Clock className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Contacted</p>
-              <p className="text-2xl font-bold">{contactedLeads}</p>
-            </div>
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-yellow-600" />
+            <div className="p-2 bg-yellow-100 dark:bg-yellow-950/30 rounded-lg">
+              <Plus className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
             </div>
           </div>
         </div>
@@ -284,8 +344,20 @@ const LeadsPage: React.FC = () => {
               <p className="text-sm font-medium text-muted-foreground">Qualified</p>
               <p className="text-2xl font-bold">{qualifiedLeads}</p>
             </div>
-            <div className="p-2 bg-green-100 rounded-lg">
-              <CheckCircle className="h-6 w-6 text-green-600" />
+            <div className="p-2 bg-green-100 dark:bg-green-950/30 rounded-lg">
+              <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Lost Leads</p>
+              <p className="text-2xl font-bold">{lostLeads}</p>
+            </div>
+            <div className="p-2 bg-red-100 dark:bg-red-950/30 rounded-lg">
+              <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
             </div>
           </div>
         </div>
@@ -316,12 +388,12 @@ const LeadsPage: React.FC = () => {
                 : "Start by adding your first lead to track potential customers."
               }
             </p>
-            <button
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium shadow hover:bg-primary/90 transition-colors flex items-center gap-2 mx-auto"
+            <Button
               onClick={openAddModal}
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium shadow hover:bg-primary/90 transition-colors flex items-center gap-2 mx-auto"
             >
               <Plus className="h-4 w-4" /> Add Lead
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -357,9 +429,7 @@ const LeadsPage: React.FC = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <StatusIcon className="h-4 w-4 text-muted-foreground" />
-                          <Badge className={getStatusBadge(lead.status)}>
-                            {lead.status}
-                          </Badge>
+                          {formatStatus(lead.status)}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -378,7 +448,7 @@ const LeadsPage: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4 text-muted-foreground" />
                             <span className="text-sm text-muted-foreground">
-                              {getAssignedStaffName(lead.assignedTo)}
+                              {getAssignedStaffName(lead.assignedTo, lead.assignedUser)}
                             </span>
                           </div>
                         </td>
@@ -524,17 +594,17 @@ const LeadsPage: React.FC = () => {
             )}
             
             <DialogFooter>
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium shadow hover:bg-primary/90 transition-colors flex items-center gap-2"
                 disabled={formLoading}
+                className="flex items-center gap-2"
               >
                 {formLoading ? (
                   <>
@@ -547,7 +617,7 @@ const LeadsPage: React.FC = () => {
                     {editLead ? 'Save Changes' : 'Create Lead'}
                   </>
                 )}
-              </button>
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

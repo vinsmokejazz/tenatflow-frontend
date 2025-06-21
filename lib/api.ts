@@ -100,21 +100,25 @@ class ApiClient {
     return this.request('/clients')
   }
 
+  async getClientLimitInfo() {
+    return this.request('/clients/limit/info')
+  }
+
   async getClient(id: string) {
     return this.request(`/clients/${id}`)
   }
 
-  async createClient(clientData: any) {
+  async createClient(data: any) {
     return this.request('/clients', {
       method: 'POST',
-      body: JSON.stringify(clientData)
+      body: JSON.stringify(data)
     })
   }
 
-  async updateClient(id: string, clientData: any) {
+  async updateClient(id: string, data: any) {
     return this.request(`/clients/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(clientData)
+      body: JSON.stringify(data)
     })
   }
 
@@ -155,29 +159,33 @@ class ApiClient {
 
   // Follow-ups endpoints
   async getFollowUps() {
-    return this.request('/followUp')
+    return this.request('/follow-ups')
   }
 
   async getFollowUp(id: string) {
-    return this.request(`/followUp/${id}`)
+    return this.request(`/follow-ups/${id}`)
   }
 
-  async createFollowUp(followUpData: any) {
-    return this.request('/followUp', {
+  async getDashboardTasks() {
+    return this.request('/follow-ups/dashboard/tasks')
+  }
+
+  async createFollowUp(data: any) {
+    return this.request('/follow-ups', {
       method: 'POST',
-      body: JSON.stringify(followUpData)
+      body: JSON.stringify(data)
     })
   }
 
   async updateFollowUp(id: string, followUpData: any) {
-    return this.request(`/followUp/${id}`, {
+    return this.request(`/follow-ups/${id}`, {
       method: 'PUT',
       body: JSON.stringify(followUpData)
     })
   }
 
   async deleteFollowUp(id: string) {
-    return this.request(`/followUp/${id}`, {
+    return this.request(`/follow-ups/${id}`, {
       method: 'DELETE'
     })
   }
@@ -358,6 +366,11 @@ class ApiClient {
   // Add a public method for custom requests
   async customRequest(endpoint: string, options: RequestInit = {}) {
     return this.request(endpoint, options);
+  }
+
+  // Get client details with leads, follow-ups, and deals
+  async getClientDetails(clientId: string) {
+    return this.request(`/clients/${clientId}/details`);
   }
 }
 

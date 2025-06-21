@@ -1,15 +1,17 @@
 'use client';
 
 import React from 'react';
-import { BarChart2, FileText, Calendar, Edit, Trash2, Plus, Download, Eye, TrendingUp, Users, Target, DollarSign } from 'lucide-react';
+import { BarChart2, FileText, Calendar, Edit, Trash2, Plus, Download, Eye, TrendingUp, Users, Target, DollarSign, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { apiClient } from '@/lib/api';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
+import { Button } from '@/components/ui/button';
 
 const ReportsPage: React.FC = () => {
   const [loading, setLoading] = React.useState(true);
@@ -145,14 +147,21 @@ const ReportsPage: React.FC = () => {
 
   // Get type badge color
   const getTypeBadge = (type: string) => {
-    const colors = {
-      leads: 'bg-blue-100 text-blue-800',
-      clients: 'bg-green-100 text-green-800',
-      followups: 'bg-yellow-100 text-yellow-800',
-      sales: 'bg-purple-100 text-purple-800',
-      custom: 'bg-gray-100 text-gray-800'
+    const typeConfig = {
+      leads: { label: 'Leads', variant: 'info' as const, icon: <Target className="h-4 w-4" /> },
+      clients: { label: 'Clients', variant: 'success' as const, icon: <Users className="h-4 w-4" /> },
+      followups: { label: 'Follow-ups', variant: 'warning' as const, icon: <Calendar className="h-4 w-4" /> },
+      sales: { label: 'Sales', variant: 'secondary' as const, icon: <DollarSign className="h-4 w-4" /> },
+      custom: { label: 'Custom', variant: 'outline' as const, icon: <BarChart2 className="h-4 w-4" /> }
     };
-    return colors[type as keyof typeof colors] || colors.custom;
+    const config = typeConfig[type.toLowerCase() as keyof typeof typeConfig] || typeConfig.custom;
+    
+    return (
+      <Badge variant={config.variant} className="flex items-center gap-2">
+        {config.icon}
+        {config.label}
+      </Badge>
+    );
   };
 
   // Get type icon
@@ -165,6 +174,28 @@ const ReportsPage: React.FC = () => {
       custom: BarChart2
     };
     return icons[type as keyof typeof icons] || BarChart2;
+  };
+
+  const formatStatus = (status: string) => {
+    const stageConfig = {
+      pending: { label: 'Pending', variant: 'warning' as const, icon: <Clock className="h-4 w-4" /> },
+      generating: { label: 'Generating', variant: 'info' as const, icon: <RefreshCw className="h-4 w-4 animate-spin" /> },
+      completed: { label: 'Completed', variant: 'success' as const, icon: <CheckCircle className="h-4 w-4" /> },
+      failed: { label: 'Failed', variant: 'destructive' as const, icon: <XCircle className="h-4 w-4" /> }
+    };
+    
+    const config = stageConfig[status.toLowerCase() as keyof typeof stageConfig] || { 
+      label: status, 
+      variant: 'outline' as const,
+      icon: <FileText className="h-4 w-4" />
+    };
+    
+    return (
+      <Badge variant={config.variant} className="flex items-center gap-2">
+        {config.icon}
+        {config.label}
+      </Badge>
+    );
   };
 
   return (
@@ -187,12 +218,12 @@ const ReportsPage: React.FC = () => {
             onChange={e => setSearch(e.target.value)}
             className="sm:w-64"
           />
-          <button
-            className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium shadow hover:bg-primary/90 transition-colors flex items-center gap-2"
+          <Button
             onClick={openAddModal}
+            className="flex items-center gap-2"
           >
             <Plus className="h-4 w-4" /> Generate Report
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -204,44 +235,41 @@ const ReportsPage: React.FC = () => {
               <p className="text-sm font-medium text-muted-foreground">Total Reports</p>
               <p className="text-2xl font-bold">{totalReports}</p>
             </div>
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <FileText className="h-6 w-6 text-blue-600" />
+            <div className="p-2 bg-blue-100 dark:bg-blue-950/30 rounded-lg">
+              <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
         </div>
-
         <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Lead Reports</p>
-              <p className="text-2xl font-bold">{reportsByType.leads || 0}</p>
+              <p className="text-2xl font-bold">{reportsByType['leads'] || 0}</p>
             </div>
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Target className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Client Reports</p>
-              <p className="text-2xl font-bold">{reportsByType.clients || 0}</p>
-            </div>
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Users className="h-6 w-6 text-purple-600" />
+            <div className="p-2 bg-green-100 dark:bg-green-950/30 rounded-lg">
+              <Target className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
           </div>
         </div>
-
         <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Sales Reports</p>
-              <p className="text-2xl font-bold">{reportsByType.sales || 0}</p>
+              <p className="text-2xl font-bold">{reportsByType['sales'] || 0}</p>
             </div>
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <DollarSign className="h-6 w-6 text-yellow-600" />
+            <div className="p-2 bg-purple-100 dark:bg-purple-950/30 rounded-lg">
+              <DollarSign className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Client Reports</p>
+              <p className="text-2xl font-bold">{reportsByType['clients'] || 0}</p>
+            </div>
+            <div className="p-2 bg-yellow-100 dark:bg-yellow-950/30 rounded-lg">
+              <Users className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
             </div>
           </div>
         </div>
@@ -265,12 +293,12 @@ const ReportsPage: React.FC = () => {
             <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <h3 className="text-lg font-medium mb-2">No reports found</h3>
             <p className="mb-4">Start by generating your first report to track your business metrics.</p>
-            <button
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium shadow hover:bg-primary/90 transition-colors flex items-center gap-2 mx-auto"
+            <Button
               onClick={openAddModal}
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium shadow hover:bg-primary/90 transition-colors flex items-center gap-2 mx-auto"
             >
               <Plus className="h-4 w-4" /> Generate Report
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -302,9 +330,7 @@ const ReportsPage: React.FC = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <TypeIcon className="h-4 w-4 text-muted-foreground" />
-                          <Badge className={getTypeBadge(report.type)}>
-                            {report.type}
-                          </Badge>
+                          {getTypeBadge(report.type)}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -314,40 +340,33 @@ const ReportsPage: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            className="p-2 rounded-lg hover:bg-muted transition-colors"
-                            aria-label="View report"
+                        <div className="flex items-center justify-end gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-8 w-8"
                             onClick={() => handleViewReport(report.id)}
                           >
                             <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            className="p-2 rounded-lg hover:bg-muted transition-colors"
-                            aria-label="Download report"
-                            onClick={() => {
-                              // TODO: Implement download functionality
-                              toast({ title: 'Download Report', description: 'Download functionality coming soon!' });
-                            }}
-                          >
-                            <Download className="h-4 w-4" />
-                          </button>
-                          <button
-                            className="p-2 rounded-lg hover:bg-muted transition-colors"
-                            aria-label="Edit report"
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-8 w-8"
                             onClick={() => openEditModal(report)}
                           >
                             <Edit className="h-4 w-4" />
-                          </button>
+                          </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <button
-                                className="p-2 rounded-lg hover:bg-destructive/20 text-destructive transition-colors"
-                                aria-label="Delete report"
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
                                 onClick={() => setDeleteId(report.id)}
                               >
                                 <Trash2 className="h-4 w-4" />
-                              </button>
+                              </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
@@ -390,70 +409,51 @@ const ReportsPage: React.FC = () => {
               {editReport ? 'Edit Report' : 'Generate New Report'}
             </DialogTitle>
             <DialogDescription>
-              {editReport ? 'Update the report details below.' : 'Fill in the details to generate a new report.'}
+              {editReport ? 'Update the details of your report.' : 'Fill in the details to generate a new report.'}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleFormSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="name">Report Name</label>
-              <Input 
-                id="name" 
-                name="name" 
-                value={form.name} 
-                onChange={(e) => handleFormChange('name', e.target.value)} 
-                placeholder="Enter report name..."
-                required 
-                autoFocus 
+          <form onSubmit={handleFormSubmit} className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="name">Report Name</Label>
+              <Input
+                id="name"
+                value={form.name}
+                onChange={e => handleFormChange('name', e.target.value)}
+                placeholder="e.g., Q4 Sales Performance"
+                required
               />
             </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="type">Report Type</label>
-              <Select value={form.type} onValueChange={(value) => handleFormChange('type', value)}>
+            <div>
+              <Label htmlFor="type">Report Type</Label>
+              <Select value={form.type} onValueChange={value => handleFormChange('type', value)} required>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select report type" />
+                  <SelectValue placeholder="Select a report type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="leads">Leads Report</SelectItem>
-                  <SelectItem value="clients">Clients Report</SelectItem>
-                  <SelectItem value="followups">Follow-ups Report</SelectItem>
-                  <SelectItem value="sales">Sales Report</SelectItem>
+                  <SelectItem value="leads">Leads Analysis</SelectItem>
+                  <SelectItem value="clients">Client Summary</SelectItem>
+                  <SelectItem value="followups">Follow-ups Overview</SelectItem>
+                  <SelectItem value="sales">Sales Performance</SelectItem>
                   <SelectItem value="custom">Custom Report</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="date">Report Date</label>
-              <Input 
-                id="date" 
-                name="date" 
-                type="date" 
-                value={form.date} 
-                onChange={(e) => handleFormChange('date', e.target.value)} 
-                required 
+            <div>
+              <Label htmlFor="date">Report Date</Label>
+              <Input
+                id="date"
+                type="date"
+                value={form.date}
+                onChange={e => handleFormChange('date', e.target.value)}
+                required
               />
             </div>
-            
-            {formError && (
-              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
-                {formError}
-              </div>
-            )}
-            
+            {formError && <p className="text-sm text-red-500">{formError}</p>}
             <DialogFooter>
-              <button
-                type="button"
-                onClick={() => setModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
+              <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
                 Cancel
-              </button>
-              <button
-                type="submit"
-                className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium shadow hover:bg-primary/90 transition-colors flex items-center gap-2"
-                disabled={formLoading}
-              >
+              </Button>
+              <Button type="submit" disabled={formLoading} className="flex items-center gap-2">
                 {formLoading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -461,11 +461,11 @@ const ReportsPage: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <BarChart2 className="h-4 w-4" />
-                    {editReport ? 'Save Changes' : 'Generate Report'}
+                    <FileText className="h-4 w-4" />
+                    {editReport ? 'Save Changes' : 'Generate'}
                   </>
                 )}
-              </button>
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -499,9 +499,7 @@ const ReportsPage: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Type</p>
-                    <Badge className={getTypeBadge(viewReport.type)}>
-                      {viewReport.type}
-                    </Badge>
+                    {getTypeBadge(viewReport.type)}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Created</p>
@@ -576,12 +574,11 @@ const ReportsPage: React.FC = () => {
           ) : null}
           
           <DialogFooter>
-            <button
-              onClick={() => setViewModalOpen(false)}
-              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Close
-            </button>
+            <Button onClick={() => setViewModalOpen(false)} variant="outline">Close</Button>
+            <Button className="flex items-center gap-2">
+              <Download className="h-4 w-4" />
+              Download PDF
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

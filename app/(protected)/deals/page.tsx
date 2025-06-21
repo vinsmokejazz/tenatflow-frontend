@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Briefcase, DollarSign, User, Edit, Trash2, Plus, Calendar, TrendingUp, CheckCircle, Clock } from 'lucide-react';
+import { Briefcase, DollarSign, User, Edit, Trash2, Plus, Calendar, TrendingUp, CheckCircle, Clock, Search, Handshake, Target } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { apiClient } from '@/lib/api';
 import { useAuth } from '@/context/auth-context';
@@ -142,14 +143,21 @@ const DealsPage: React.FC = () => {
       }
 
       if (editDeal) {
-        await apiClient.updateDeal(editDeal.id, dealData);
+        const updatedDeal = await apiClient.updateDeal(editDeal.id, dealData);
+        // Immediately update local state for better UX
+        setDeals(prevDeals => 
+          prevDeals.map(deal => 
+            deal.id === editDeal.id ? updatedDeal : deal
+          )
+        );
         toast({ title: 'Deal updated', description: 'Deal updated successfully.' });
       } else {
-        await apiClient.createDeal(dealData);
+        const newDeal = await apiClient.createDeal(dealData);
+        // Immediately update local state for better UX
+        setDeals(prevDeals => [newDeal, ...prevDeals]);
         toast({ title: 'Deal added', description: 'Deal added successfully.' });
       }
       setModalOpen(false);
-      fetchData();
     } catch (err: any) {
       setFormError(err.message || 'Failed to save deal');
     }
@@ -240,38 +248,43 @@ const DealsPage: React.FC = () => {
     const stageConfig = {
       prospecting: { 
         label: 'Prospecting', 
-        color: 'bg-blue-50 text-blue-700 border-blue-200',
-        icon: '🔍'
+        color: 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+        icon: <Search className="h-4 w-4" />
       },
       negotiating: { 
         label: 'Negotiating', 
-        color: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-        icon: '🤝'
+        color: 'bg-yellow-50 dark:bg-yellow-950/20 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800',
+        icon: <Handshake className="h-4 w-4" />
       },
       closed: { 
         label: 'Closed', 
-        color: 'bg-green-50 text-green-700 border-green-200',
-        icon: '✅'
+        color: 'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800',
+        icon: <CheckCircle className="h-4 w-4" />
       }
     };
     
     const config = stageConfig[stage as keyof typeof stageConfig] || { 
       label: stage, 
-      color: 'bg-gray-50 text-gray-700 border-gray-200',
-      icon: '📋'
+      color: 'bg-gray-50 dark:bg-gray-950/20 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-800',
+      icon: <Target className="h-4 w-4" />
     };
     
     return (
       <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border ${config.color}`}>
-        <span className="text-base">{config.icon}</span>
+        {config.icon}
         {config.label}
       </span>
     );
   };
 
   // Get assigned staff name
-  const getAssignedStaffName = (assignedTo: string) => {
-    if (!assignedTo) return 'Unassigned';
+  const getAssignedStaffName = (assignedTo: string | null, assignedUser?: any) => {
+    if (!assignedTo || assignedTo === 'unassigned') return 'Unassigned';
+    // Use assignedUser data from API response if available
+    if (assignedUser) {
+      return assignedUser.name || 'Unknown Staff';
+    }
+    // Fallback to local staff array lookup
     const staffMember = staff.find(s => s.id === assignedTo);
     return staffMember?.name || 'Unknown Staff';
   };
@@ -306,12 +319,12 @@ const DealsPage: React.FC = () => {
             onChange={e => setSearch(e.target.value)}
             className="sm:w-64"
           />
-          <button
-            className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium shadow hover:bg-primary/90 transition-colors flex items-center gap-2"
+          <Button
             onClick={openAddModal}
+            className="flex items-center gap-2"
           >
             <Plus className="h-4 w-4" /> Add Deal
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -325,8 +338,8 @@ const DealsPage: React.FC = () => {
               </p>
               <p className="text-2xl font-bold">{dealStats.totalDeals}</p>
             </div>
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Briefcase className="h-6 w-6 text-blue-600" />
+            <div className="p-2 bg-blue-100 dark:bg-blue-950/30 rounded-lg">
+              <Briefcase className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
         </div>
@@ -337,8 +350,8 @@ const DealsPage: React.FC = () => {
               <p className="text-sm font-medium text-muted-foreground">Total Value</p>
               <p className="text-2xl font-bold">{formatValue(dealStats.totalValue)}</p>
             </div>
-            <div className="p-2 bg-green-100 rounded-lg">
-              <DollarSign className="h-6 w-6 text-green-600" />
+            <div className="p-2 bg-green-100 dark:bg-green-950/30 rounded-lg">
+              <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
           </div>
         </div>
@@ -349,8 +362,8 @@ const DealsPage: React.FC = () => {
               <p className="text-sm font-medium text-muted-foreground">Prospecting</p>
               <p className="text-2xl font-bold">{dealStats.prospecting}</p>
             </div>
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Clock className="h-6 w-6 text-blue-600" />
+            <div className="p-2 bg-blue-100 dark:bg-blue-950/30 rounded-lg">
+              <Search className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
         </div>
@@ -361,8 +374,8 @@ const DealsPage: React.FC = () => {
               <p className="text-sm font-medium text-muted-foreground">Closed</p>
               <p className="text-2xl font-bold">{dealStats.closed}</p>
             </div>
-            <div className="p-2 bg-green-100 rounded-lg">
-              <CheckCircle className="h-6 w-6 text-green-600" />
+            <div className="p-2 bg-green-100 dark:bg-green-950/30 rounded-lg">
+              <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
           </div>
         </div>
@@ -393,12 +406,12 @@ const DealsPage: React.FC = () => {
                 : "Start by adding your first deal to track sales opportunities."
               }
             </p>
-            <button
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium shadow hover:bg-primary/90 transition-colors flex items-center gap-2 mx-auto"
+            <Button
               onClick={openAddModal}
+              className="flex items-center gap-2 mx-auto"
             >
               <Plus className="h-4 w-4" /> Add Deal
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -420,7 +433,7 @@ const DealsPage: React.FC = () => {
                   <tr key={deal.id} className="border-b border-border hover:bg-muted/30 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-lg">
+                        <div className="p-2 bg-primary/10 dark:bg-primary/20 rounded-lg">
                           <Briefcase className="h-4 w-4 text-primary" />
                         </div>
                         <div>
@@ -450,7 +463,7 @@ const DealsPage: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm text-muted-foreground">
-                            {getAssignedStaffName(deal.assignedTo)}
+                            {getAssignedStaffName(deal.assignedTo, deal.assignedUser)}
                           </span>
                         </div>
                       </td>
@@ -598,17 +611,17 @@ const DealsPage: React.FC = () => {
             )}
             
             <DialogFooter>
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium shadow hover:bg-primary/90 transition-colors flex items-center gap-2"
                 disabled={formLoading}
+                className="flex items-center gap-2"
               >
                 {formLoading ? (
                   <>
@@ -621,7 +634,7 @@ const DealsPage: React.FC = () => {
                     {editDeal ? 'Save Changes' : 'Create Deal'}
                   </>
                 )}
-              </button>
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

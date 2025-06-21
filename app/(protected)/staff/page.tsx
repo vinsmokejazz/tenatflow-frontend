@@ -24,17 +24,24 @@ import {
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
-import { UserCog, Users, Shield, Calendar, Search, Plus, Edit, Trash2, Filter } from 'lucide-react';
+import { UserCog, Users, Shield, Calendar, Search, Plus, Edit, Trash2, Filter, User, Mail } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export default function StaffManagementPage() {
   const { user, loading: authLoading, hasRole } = useAuth();
   const router = useRouter();
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isInviteModalOpen, setInviteModalOpen] = useState(false);
+  const [isEditModalOpen, setEditModalOpen] = useState(false);
+  
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState<"admin" | "staff">("staff");
-  const [loading, setLoading] = useState(false);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  
+  const [editUser, setEditUser] = useState<any | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+
   const [staff, setStaff] = useState<any[]>([]);
   const [staffLoading, setStaffLoading] = useState(true);
   const [staffError, setStaffError] = useState<string | null>(null);
@@ -42,6 +49,20 @@ export default function StaffManagementPage() {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const openInviteModal = () => {
+    setEmail("");
+    setName("");
+    setRole("staff");
+    setInviteModalOpen(true);
+  };
+
+  const openEditModal = (userToEdit: any) => {
+    setEditUser(userToEdit);
+    setName(userToEdit.name || '');
+    setRole(userToEdit.role);
+    setEditModalOpen(true);
+  };
 
   const fetchStaff = useCallback(async () => {
     setStaffLoading(true);
@@ -69,19 +90,32 @@ export default function StaffManagementPage() {
 
   const handleInviteStaff = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setInviteLoading(true);
     try {
       await apiClient.createUser({ email, name, role });
       toast.success(`Invitation sent to ${email}!`);
-      setEmail("");
-      setName("");
-      setRole("staff");
-      setIsModalOpen(false);
+      setInviteModalOpen(false);
       fetchStaff();
     } catch (error: any) {
       toast.error(error.message || "An error occurred while sending invitation");
     }
-    setLoading(false);
+    setInviteLoading(false);
+  };
+
+  const handleEditStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editUser) return;
+    setEditLoading(true);
+    try {
+      const payload: { name: string; role: 'admin' | 'staff'; } = { name, role };
+      await apiClient.updateUserById(editUser.id, payload);
+      toast.success("Staff member updated successfully!");
+      setEditModalOpen(false);
+      fetchStaff();
+    } catch (error: any) {
+      toast.error(error.message || "An error occurred while updating staff member");
+    }
+    setEditLoading(false);
   };
 
   const handleDeleteStaff = async () => {
@@ -112,9 +146,9 @@ export default function StaffManagementPage() {
   });
 
   const staffStats = {
-    totalStaff: staff.length,
-    admins: staff.filter(staffMember => staffMember.role === 'admin').length,
-    staffMembers: staff.filter(staffMember => staffMember.role === 'staff').length,
+    total: staff.length,
+    admins: staff.filter(s => s.role === 'admin').length,
+    pending: staff.filter(s => !s.name).length, // Example: users without a name are pending
   };
 
   if (authLoading) {
@@ -137,22 +171,22 @@ export default function StaffManagementPage() {
           </h1>
           <p className="text-muted-foreground mt-1">Manage your team members and their roles</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
+        <Button onClick={openInviteModal} className="flex items-center gap-2">
           <Plus className="h-4 w-4" /> Invite Staff
         </Button>
       </div>
 
       {/* Statistics Dashboard */}
-      {!staffLoading && !staffError && staff.length > 0 && (
+      {!staffLoading && !staffError && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Staff</p>
-                <p className="text-2xl font-bold text-foreground">{staffStats.totalStaff}</p>
+                <p className="text-2xl font-bold">{staffStats.total}</p>
               </div>
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Users className="h-6 w-6 text-blue-600" />
+              <div className="p-2 bg-blue-100 dark:bg-blue-950/30 rounded-lg">
+                <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
           </div>
@@ -161,10 +195,10 @@ export default function StaffManagementPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Admins</p>
-                <p className="text-2xl font-bold text-foreground">{staffStats.admins}</p>
+                <p className="text-2xl font-bold">{staffStats.admins}</p>
               </div>
-              <div className="p-2 bg-red-100 rounded-lg">
-                <Shield className="h-6 w-6 text-red-600" />
+              <div className="p-2 bg-purple-100 dark:bg-purple-950/30 rounded-lg">
+                <Shield className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
             </div>
           </div>
@@ -172,11 +206,11 @@ export default function StaffManagementPage() {
           <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Staff Members</p>
-                <p className="text-2xl font-bold text-foreground">{staffStats.staffMembers}</p>
+                <p className="text-sm font-medium text-muted-foreground">Active Invites</p>
+                <p className="text-2xl font-bold">{staffStats.pending}</p>
               </div>
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Users className="h-6 w-6 text-green-600" />
+              <div className="p-2 bg-yellow-100 dark:bg-yellow-950/30 rounded-lg">
+                <Mail className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
               </div>
             </div>
           </div>
@@ -211,8 +245,10 @@ export default function StaffManagementPage() {
 
       {/* Staff Table */}
       <div className="bg-card border border-border rounded-lg shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-border">
-          <h2 className="text-lg font-semibold">All Staff Members</h2>
+        <div className="p-6 border-b border-border flex items-center justify-between">
+          <h2 className="text-lg font-semibold">
+            {filteredStaff.length} Staff Member{filteredStaff.length === 1 ? '' : 's'}
+          </h2>
         </div>
         
         {staffLoading ? (
@@ -232,7 +268,7 @@ export default function StaffManagementPage() {
             <p className="mb-4">
               {search || roleFilter !== "all" ? 'No staff members match your search criteria.' : 'Start by inviting your first team member.'}
             </p>
-            <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 mx-auto">
+            <Button onClick={openInviteModal} className="flex items-center gap-2 mx-auto">
               <Plus className="h-4 w-4" /> Invite Staff
             </Button>
           </div>
@@ -262,13 +298,9 @@ export default function StaffManagementPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        staffMember.role === 'admin' 
-                          ? 'bg-red-100 text-red-700' 
-                          : 'bg-green-100 text-green-700'
-                      }`}>
+                      <Badge variant={staffMember.role === 'admin' ? 'default' : 'secondary'}>
                         {staffMember.role}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
@@ -276,43 +308,50 @@ export default function StaffManagementPage() {
                         <span>{new Date(staffMember.createdAt).toLocaleDateString()}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {staffMember.id !== user?.id ? (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <button
-                                className="p-2 rounded-lg hover:bg-destructive/20 text-destructive transition-colors"
-                                aria-label="Delete staff member"
-                                onClick={() => setDeleteId(staffMember.id)}
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label="Edit user"
+                          onClick={() => openEditModal(staffMember)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              aria-label="Delete user"
+                              onClick={() => setDeleteId(staffMember.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Staff Member?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete {staffMember.name || staffMember.email} from your team.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel onClick={() => setDeleteId(null)}>
+                                Cancel
+                              </AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={handleDeleteStaff}
+                                disabled={deleteLoading}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Staff Member?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete {staffMember.name || staffMember.email} from your team.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel onClick={() => setDeleteId(null)}>
-                                  Cancel
-                                </AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={handleDeleteStaff}
-                                  disabled={deleteLoading}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  {deleteLoading ? 'Deleting...' : 'Delete Staff Member'}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Current user</span>
-                        )}
+                                {deleteLoading ? 'Deleting...' : 'Delete Staff Member'}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </td>
                   </tr>
@@ -324,57 +363,134 @@ export default function StaffManagementPage() {
       </div>
 
       {/* Invite Staff Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Dialog open={isInviteModalOpen} onOpenChange={setInviteModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Invite Staff Member</DialogTitle>
+            <DialogTitle>Invite New Staff Member</DialogTitle>
             <DialogDescription>
-              Send an invitation to join your team. They will receive an email with setup instructions.
+              Enter the details of the new staff member. They will receive an email to set up their account.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleInviteStaff}>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter email address"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter name"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="role">Role</Label>
-                <Select value={role} onValueChange={(value: "admin" | "staff") => setRole(value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="staff">Staff</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <form onSubmit={handleInviteStaff} className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="staff@example.com"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="John Doe"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="role">Role</Label>
+              <Select onValueChange={(value: "admin" | "staff") => setRole(value)} defaultValue={role}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="staff">Staff</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setInviteModalOpen(false)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? "Sending..." : "Send Invitation"}
+              <Button
+                type="submit"
+                disabled={inviteLoading}
+                className="flex items-center gap-2"
+              >
+                {inviteLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="h-4 w-4" />
+                    Send Invite
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Edit Staff Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Staff Member</DialogTitle>
+            <DialogDescription>
+              Update the details for {editUser?.email}.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditStaff} className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="edit-name">Full Name</Label>
+              <Input
+                id="edit-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="John Doe"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-role">Role</Label>
+              <Select onValueChange={(value: "admin" | "staff") => setRole(value)} defaultValue={role}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="staff">Staff</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={editLoading}
+                className="flex items-center gap-2"
+              >
+                {editLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <UserCog className="h-4 w-4" />
+                    Save Changes
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </form>

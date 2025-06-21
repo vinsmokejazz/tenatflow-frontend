@@ -10,6 +10,7 @@ import { apiClient } from '@/lib/api';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
+import { Button } from '@/components/ui/button';
 
 const FollowUpsPage: React.FC = () => {
   const [loading, setLoading] = React.useState(true);
@@ -24,6 +25,7 @@ const FollowUpsPage: React.FC = () => {
     dueDate: string;
     clientId: string;
     assignedTo?: string;
+    completed?: boolean;
   }>({
     notes: '',
     dueDate: '',
@@ -67,7 +69,7 @@ const FollowUpsPage: React.FC = () => {
   // Open Add modal
   const openAddModal = () => {
     setEditFollowUp(null);
-    setForm({ notes: '', dueDate: '', clientId: '', assignedTo: 'unassigned' });
+    setForm({ notes: '', dueDate: '', clientId: '', assignedTo: 'unassigned', completed: false });
     setFormError(null);
     setModalOpen(true);
   };
@@ -79,7 +81,8 @@ const FollowUpsPage: React.FC = () => {
       notes: item.notes, 
       dueDate: item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : '', 
       clientId: item.clientId || '',
-      assignedTo: item.assignedTo || 'unassigned'
+      assignedTo: item.assignedTo || 'unassigned',
+      completed: item.completed || false
     });
     setFormError(null);
     setModalOpen(true);
@@ -102,7 +105,12 @@ const FollowUpsPage: React.FC = () => {
   
   // Handle form submit
   const handleFormSubmit = async (e: React.FormEvent) => {
+    console.log('=== FOLLOW-UP FORM SUBMISSION STARTED ===');
     e.preventDefault();
+    console.log('Form submission started');
+    console.log('Form data:', form);
+    console.log('User role:', hasRole('admin') ? 'admin' : 'staff');
+    
     setFormLoading(true);
     setFormError(null);
     try {
@@ -115,26 +123,49 @@ const FollowUpsPage: React.FC = () => {
       // Convert date to ISO string for backend validation
       const formData = {
         ...form,
-        dueDate: new Date(form.dueDate).toISOString()
+        dueDate: new Date(form.dueDate).toISOString(),
+        completed: form.completed || false
       };
 
       // Only send assignedTo if admin, and convert 'unassigned' to undefined
       if (!hasRole('admin')) {
         delete formData.assignedTo;
-      } else if (formData.assignedTo === 'unassigned') {
-        formData.assignedTo = undefined;
+      } else {
+        if (formData.assignedTo === 'unassigned') {
+          formData.assignedTo = undefined;
+        } else {
+          formData.assignedTo = formData.assignedTo;
+        }
       }
       
+      console.log('Payload being sent to API:', formData);
+      
       if (editFollowUp) {
-        await apiClient.updateFollowUp(editFollowUp.id, formData);
+        console.log('Updating follow-up with ID:', editFollowUp.id);
+        const updatedFollowUp = await apiClient.updateFollowUp(editFollowUp.id, formData);
+        console.log('Updated follow-up response:', updatedFollowUp);
+        console.log('Updated follow-up assignedTo:', updatedFollowUp.assignedTo);
+        console.log('Updated follow-up assignedUser:', updatedFollowUp.assignedUser);
+        
+        setFollowUps(prevFollowUps => 
+          prevFollowUps.map(followUp => 
+            followUp.id === editFollowUp.id ? updatedFollowUp : followUp
+          )
+        );
         toast({ title: 'Follow-up updated', description: 'Follow-up updated successfully.' });
       } else {
-        await apiClient.createFollowUp(formData);
+        console.log('Creating new follow-up');
+        const newFollowUp = await apiClient.createFollowUp(formData);
+        console.log('Created follow-up response:', newFollowUp);
+        console.log('Created follow-up assignedTo:', newFollowUp.assignedTo);
+        console.log('Created follow-up assignedUser:', newFollowUp.assignedUser);
+        
+        setFollowUps(prevFollowUps => [newFollowUp, ...prevFollowUps]);
         toast({ title: 'Follow-up added', description: 'Follow-up added successfully.' });
       }
       setModalOpen(false);
-      fetchData();
     } catch (err: any) {
+      console.error('Error in form submission:', err);
       setFormError(err.message || 'Failed to save follow-up');
     }
     setFormLoading(false);
@@ -156,91 +187,88 @@ const FollowUpsPage: React.FC = () => {
     setDeleteLoading(false);
   };
 
-  // Filter follow-ups based on user role
-  const getFilteredFollowUps = () => {
-    let filtered = followUps;
-    
+  // Enhanced task filtering and sorting
+  const filteredAndSortedTasks = React.useMemo(() => {
+    let filtered = followUps.filter(task => {
+      if (!search) return true;
+      const searchLower = search.toLowerCase();
+      return (
+        task.notes.toLowerCase().includes(searchLower) ||
+        (task.client?.name && task.client.name.toLowerCase().includes(searchLower)) ||
+        (task.assignedUser?.name && task.assignedUser.name.toLowerCase().includes(searchLower))
+      );
+    });
+
     // Staff only see their assigned follow-ups
     if (hasRole('staff')) {
-      filtered = followUps.filter(followUp => followUp.assignedTo === backendUser?.id);
+      filtered = filtered.filter(followUp => followUp.assignedTo === backendUser?.id);
     }
-    
-    // Apply search filter
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(item => {
-        const notes = item.notes || '';
-        const clientName = getClientName(item.clientId);
-        const assignedStaffName = staff.find(s => s.id === item.assignedTo)?.name || '';
-        return (
-          notes.toLowerCase().includes(searchLower) ||
-          clientName.toLowerCase().includes(searchLower) ||
-          assignedStaffName.toLowerCase().includes(searchLower)
-        );
-      });
-    }
-    
+
+    // Sort by priority: overdue first, then due today, then upcoming
+    filtered.sort((a, b) => {
+      const now = new Date();
+      const aDue = new Date(a.dueDate);
+      const bDue = new Date(b.dueDate);
+      
+      // Overdue tasks first
+      const aOverdue = !a.completed && aDue < now;
+      const bOverdue = !b.completed && bDue < now;
+      if (aOverdue && !bOverdue) return -1;
+      if (!aOverdue && bOverdue) return 1;
+      
+      // Then by due date
+      if (aOverdue && bOverdue) {
+        return aDue.getTime() - bDue.getTime();
+      }
+      
+      // Non-overdue tasks by due date
+      return aDue.getTime() - bDue.getTime();
+    });
+
     return filtered;
-  };
+  }, [followUps, search, hasRole, backendUser]);
 
-  const filteredFollowUps = getFilteredFollowUps();
-
-  // Calculate follow-up statistics based on filtered data
-  const followUpStats = React.useMemo(() => {
-    const totalFollowUps = filteredFollowUps.length;
-    const completedFollowUps = filteredFollowUps.filter(item => item.completed).length;
-    const pendingFollowUps = totalFollowUps - completedFollowUps;
-    const overdueFollowUps = filteredFollowUps.filter(item => 
-      !item.completed && new Date(item.dueDate) < new Date()
-    ).length;
+  // Calculate task statistics
+  const taskStats = React.useMemo(() => {
+    const now = new Date();
+    const overdue = followUps.filter(task => !task.completed && new Date(task.dueDate) < now).length;
+    const dueToday = followUps.filter(task => {
+      if (task.completed) return false;
+      const dueDate = new Date(task.dueDate);
+      const today = new Date();
+      return dueDate.toDateString() === today.toDateString();
+    }).length;
+    const upcoming = followUps.filter(task => {
+      if (task.completed) return false;
+      const dueDate = new Date(task.dueDate);
+      const today = new Date();
+      const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+      return dueDate > today && dueDate <= weekFromNow;
+    }).length;
+    const completed = followUps.filter(task => task.completed).length;
     
-    return {
-      totalFollowUps,
-      completedFollowUps,
-      pendingFollowUps,
-      overdueFollowUps
-    };
-  }, [filteredFollowUps]);
+    return { overdue, dueToday, upcoming, completed, total: followUps.length };
+  }, [followUps]);
 
-  // Format status badge
-  const formatStatus = (completed: boolean, dueDate: string) => {
-    const isOverdue = !completed && new Date(dueDate) < new Date();
+  // Get task status and styling
+  const getTaskStatus = (task: any) => {
+    if (task.completed) return { status: 'Completed', variant: 'default' as const, color: 'text-green-600' };
     
-    if (completed) {
-      return (
-        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-green-50 text-green-700 border border-green-200">
-          <CheckCircle className="h-4 w-4" />
-          Completed
-        </span>
-      );
-    } else if (isOverdue) {
-      return (
-        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-red-50 text-red-700 border border-red-200">
-          <span className="text-base">⚠️</span>
-          Overdue
-        </span>
-      );
+    const now = new Date();
+    const dueDate = new Date(task.dueDate);
+    const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (dueDate < now) {
+      return { status: 'Overdue', variant: 'destructive' as const, color: 'text-red-600' };
+    } else if (daysUntilDue === 0) {
+      return { status: 'Due Today', variant: 'secondary' as const, color: 'text-orange-600' };
+    } else if (daysUntilDue === 1) {
+      return { status: 'Due Tomorrow', variant: 'secondary' as const, color: 'text-yellow-600' };
+    } else if (daysUntilDue <= 7) {
+      return { status: `Due in ${daysUntilDue} days`, variant: 'outline' as const, color: 'text-blue-600' };
     } else {
-      return (
-        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-yellow-50 text-yellow-700 border border-yellow-200">
-          <Clock className="h-4 w-4" />
-          Pending
-        </span>
-      );
+      return { status: `Due in ${daysUntilDue} days`, variant: 'outline' as const, color: 'text-gray-600' };
     }
-  };
-
-  // Get client name by ID
-  const getClientName = (clientId: string) => {
-    const client = clients.find(c => c.id === clientId);
-    return client ? client.name : clientId;
-  };
-
-  // Get assigned staff name
-  const getAssignedStaffName = (assignedTo: string) => {
-    if (!assignedTo) return 'Unassigned';
-    const staffMember = staff.find(s => s.id === assignedTo);
-    return staffMember?.name || 'Unknown Staff';
   };
 
   return (
@@ -283,17 +311,17 @@ const FollowUpsPage: React.FC = () => {
       </div>
 
       {/* Statistics Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">
                 {hasRole('staff') ? 'My Follow-ups' : 'Total Follow-ups'}
               </p>
-              <p className="text-2xl font-bold">{followUpStats.totalFollowUps}</p>
+              <p className="text-2xl font-bold">{taskStats.total}</p>
             </div>
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <FileText className="h-6 w-6 text-blue-600" />
+            <div className="p-2 bg-blue-100 dark:bg-blue-950/30 rounded-lg">
+              <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
         </div>
@@ -302,10 +330,10 @@ const FollowUpsPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Completed</p>
-              <p className="text-2xl font-bold">{followUpStats.completedFollowUps}</p>
+              <p className="text-2xl font-bold">{taskStats.completed}</p>
             </div>
-            <div className="p-2 bg-green-100 rounded-lg">
-              <CheckCircle className="h-6 w-6 text-green-600" />
+            <div className="p-2 bg-green-100 dark:bg-green-950/30 rounded-lg">
+              <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
           </div>
         </div>
@@ -313,11 +341,23 @@ const FollowUpsPage: React.FC = () => {
         <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Pending</p>
-              <p className="text-2xl font-bold">{followUpStats.pendingFollowUps}</p>
+              <p className="text-sm font-medium text-muted-foreground">Due Today</p>
+              <p className="text-2xl font-bold">{taskStats.dueToday}</p>
             </div>
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <Clock className="h-6 w-6 text-yellow-600" />
+            <div className="p-2 bg-orange-100 dark:bg-orange-950/30 rounded-lg">
+              <Calendar className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Upcoming</p>
+              <p className="text-2xl font-bold">{taskStats.upcoming}</p>
+            </div>
+            <div className="p-2 bg-yellow-100 dark:bg-yellow-950/30 rounded-lg">
+              <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
             </div>
           </div>
         </div>
@@ -326,10 +366,10 @@ const FollowUpsPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Overdue</p>
-              <p className="text-2xl font-bold">{followUpStats.overdueFollowUps}</p>
+              <p className="text-2xl font-bold">{taskStats.overdue}</p>
             </div>
-            <div className="p-2 bg-red-100 rounded-lg">
-              <span className="text-base">⚠️</span>
+            <div className="p-2 bg-red-100 dark:bg-red-950/30 rounded-lg">
+              <Clock className="h-6 w-6 text-red-600 dark:text-red-400" />
             </div>
           </div>
         </div>
@@ -350,7 +390,7 @@ const FollowUpsPage: React.FC = () => {
           </div>
         ) : error ? (
           <div className="p-6 text-center text-red-500">{error}</div>
-        ) : filteredFollowUps.length === 0 ? (
+        ) : filteredAndSortedTasks.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
             <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <h3 className="text-lg font-medium mb-2">No follow-ups found</h3>
@@ -383,7 +423,7 @@ const FollowUpsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredFollowUps.map((item) => (
+                {filteredAndSortedTasks.map((item) => (
                   <tr key={item.id} className="border-b border-border hover:bg-muted/30 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -391,7 +431,7 @@ const FollowUpsPage: React.FC = () => {
                           <User className="h-4 w-4 text-primary" />
                         </div>
                         <div>
-                          <p className="font-medium">{getClientName(item.clientId)}</p>
+                          <p className="font-medium">{item.client?.name || 'Unassigned'}</p>
                         </div>
                       </div>
                     </td>
@@ -407,42 +447,83 @@ const FollowUpsPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      {formatStatus(item.completed, item.dueDate)}
+                      <Badge variant={getTaskStatus(item).variant} className={getTaskStatus(item).color}>
+                        {getTaskStatus(item).status}
+                      </Badge>
                     </td>
                     {hasRole('admin') && (
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm text-muted-foreground">
-                            {getAssignedStaffName(item.assignedTo)}
+                            {item.assignedUser?.name || 'Unassigned'}
                           </span>
                         </div>
                       </td>
                     )}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <button
-                          className="p-2 rounded-lg hover:bg-muted transition-colors"
+                        <Button
+                          variant={item.completed ? 'secondary' : 'outline'}
+                          size="icon"
+                          className={`h-8 w-8 ${item.completed ? 'bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-950/30 dark:text-green-400' : ''}`}
+                          aria-label={item.completed ? 'Mark as incomplete' : 'Mark as complete'}
+                          onClick={async () => {
+                            try {
+                              await apiClient.updateFollowUp(item.id, { 
+                                completed: !item.completed,
+                                notes: item.notes,
+                                dueDate: item.dueDate
+                              });
+                              // Update local state immediately for better UX
+                              setFollowUps(prevFollowUps => 
+                                prevFollowUps.map(followUp => 
+                                  followUp.id === item.id 
+                                    ? { ...followUp, completed: !followUp.completed }
+                                    : followUp
+                                )
+                              );
+                              toast({ 
+                                title: item.completed ? 'Marked as incomplete' : 'Marked as complete', 
+                                description: `Follow-up ${item.completed ? 'marked as incomplete' : 'marked as complete'} successfully.` 
+                              });
+                            } catch (err: any) {
+                              toast({ 
+                                title: 'Error', 
+                                description: err.message || 'Failed to update follow-up status.', 
+                                variant: 'destructive' 
+                              });
+                            }
+                          }}
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
                           aria-label="Edit follow-up"
                           onClick={() => openEditModal(item)}
                         >
                           <Edit className="h-4 w-4" />
-                        </button>
+                        </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <button
-                              className="p-2 rounded-lg hover:bg-destructive/20 text-destructive transition-colors"
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
                               aria-label="Delete follow-up"
                               onClick={() => setDeleteId(item.id)}
                             >
                               <Trash2 className="h-4 w-4" />
-                            </button>
+                            </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete Follow-up?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete the follow-up for {getClientName(item.clientId)}.
+                                This action cannot be undone. This will permanently delete the follow-up for {item.client?.name || 'Unassigned'}.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -520,6 +601,22 @@ const FollowUpsPage: React.FC = () => {
               />
             </div>
             
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <input
+                  id="completed"
+                  name="completed"
+                  type="checkbox"
+                  checked={form.completed || false}
+                  onChange={(e) => setForm({ ...form, completed: e.target.checked })}
+                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                />
+                <label htmlFor="completed" className="text-sm font-medium">
+                  Mark as completed
+                </label>
+              </div>
+            </div>
+            
             {hasRole('admin') && (
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="assignedTo">Assigned To</label>
@@ -546,17 +643,17 @@ const FollowUpsPage: React.FC = () => {
             )}
             
             <DialogFooter>
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium shadow hover:bg-primary/90 transition-colors flex items-center gap-2"
                 disabled={formLoading}
+                className="flex items-center gap-2"
               >
                 {formLoading ? (
                   <>
@@ -569,7 +666,7 @@ const FollowUpsPage: React.FC = () => {
                     {editFollowUp ? 'Save Changes' : 'Create Follow-up'}
                   </>
                 )}
-              </button>
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
