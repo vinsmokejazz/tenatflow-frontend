@@ -23,34 +23,43 @@ export function ApiTest() {
     setLoading(true)
     try {
       // Test Supabase auth
-      const { data: { session } } = await supabase.auth.getSession()
-      addResult('Supabase Session', {
-        hasSession: !!session,
-        user: session?.user ? {
-          id: session.user.id,
-          email: session.user.email,
-          metadata: session.user.user_metadata
-        } : null,
-        accessToken: session?.access_token ? 'Present' : 'Missing'
-      })
+      if (!supabase) {
+        addResult('Supabase Session', {
+          error: 'Supabase not configured',
+          hasSession: false,
+          user: null,
+          accessToken: 'Not available'
+        })
+      } else {
+        const { data: { session } } = await supabase.auth.getSession()
+        addResult('Supabase Session', {
+          hasSession: !!session,
+          user: session?.user ? {
+            id: session.user.id,
+            email: session.user.email,
+            metadata: session.user.user_metadata
+          } : null,
+          accessToken: session?.access_token ? 'Present' : 'Missing'
+        })
 
-      // Test API client token
-      addResult('API Client Token', {
-        hasToken: !!session?.access_token,
-        tokenLength: session?.access_token?.length || 0
-      })
+        // Test API client token
+        addResult('API Client Token', {
+          hasToken: !!session?.access_token,
+          tokenLength: session?.access_token?.length || 0
+        })
 
-      // Test backend auth
-      if (session?.access_token) {
-        try {
-          const userData = await apiClient.getUser()
-          addResult('Backend User', { success: true, user: userData })
-        } catch (error: any) {
-          addResult('Backend User', { 
-            success: false, 
-            error: error.message,
-            status: error.message.includes('403') ? 'Forbidden' : 'Other'
-          })
+        // Test backend auth
+        if (session?.access_token) {
+          try {
+            const userData = await apiClient.getUser()
+            addResult('Backend User', { success: true, user: userData })
+          } catch (error: any) {
+            addResult('Backend User', { 
+              success: false, 
+              error: error.message,
+              status: error.message.includes('403') ? 'Forbidden' : 'Other'
+            })
+          }
         }
       }
     } catch (error: any) {
