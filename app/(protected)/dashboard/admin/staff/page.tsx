@@ -57,8 +57,8 @@ export default function ManageStaffPage() {
     setStaffLoading(true);
     setStaffError(null);
     try {
-      const data = await apiClient.getUser(); // Should return array of users
-      setStaff(data.users || []);
+      const data = await apiClient.getUsers(); // Should return array of users
+      setStaff(data || []);
     } catch (error: any) {
       setStaffError(error.message || "Failed to fetch staff");
     }
@@ -81,8 +81,8 @@ export default function ManageStaffPage() {
     setAuditLoading(true);
     setAuditError(null);
     try {
-      const data = await apiClient.customRequest('/user/audit-log');
-      setAuditLog(data.activities || []);
+      const data = await apiClient.getAuditLog();
+      setAuditLog(data.auditLog || []);
     } catch (error: any) {
       setAuditError(error.message || 'Failed to fetch audit log');
     }
@@ -94,10 +94,7 @@ export default function ManageStaffPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await apiClient.customRequest('/user', {
-        method: 'POST',
-        body: JSON.stringify({ email, role }),
-      });
+      await apiClient.createUser({ email, role });
       toast.success(`Invitation sent to ${email}!`);
       setEmail("");
       setRole("staff");
@@ -115,10 +112,7 @@ export default function ManageStaffPage() {
     if (!editUser) return;
     setEditLoading(true);
     try {
-      await apiClient.customRequest(`/user/${editUser.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ role: editRole }),
-      });
+      await apiClient.updateUserById(editUser.id, { role: editRole });
       toast.success("Role updated successfully");
       setEditUser(null);
       fetchStaff();
@@ -133,7 +127,7 @@ export default function ManageStaffPage() {
     if (!removeUser) return;
     setRemoveLoading(true);
     try {
-      await apiClient.customRequest(`/user/${removeUser.id}`, { method: 'DELETE' });
+      await apiClient.deleteUser(removeUser.id);
       toast.success("Staff member removed");
       setRemoveUser(null);
       fetchStaff();
@@ -147,7 +141,7 @@ export default function ManageStaffPage() {
   const handleResendInvite = async (user: any) => {
     setResendLoadingId(user.id);
     try {
-      await apiClient.customRequest(`/user/${user.id}/resend-invite`, { method: 'POST' });
+      await apiClient.resendInvite(user.id);
       toast.success(`Invitation resent to ${user.email}`);
       fetchStaff();
     } catch (error: any) {

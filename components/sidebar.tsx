@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
-import { LayoutDashboard, Users, Briefcase, FileText, BarChart2, UserCog, File, Sparkles, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, FileText, BarChart2, UserCog, File, Sparkles, Menu, X, Target } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
@@ -16,13 +16,14 @@ interface NavLink {
 
 const navLinks: NavLink[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/contacts', label: 'Contacts', icon: Users },
+  { href: '/clients', label: 'Clients', icon: Users },
+  { href: '/leads', label: 'Leads', icon: Target },
   { href: '/deals', label: 'Deals', icon: Briefcase },
-  { href: '/reports', label: 'Reports', icon: BarChart2, role: 'admin' },
+  { href: '/reports', label: 'Reports', icon: BarChart2 },
   { href: '/follow-ups', label: 'Follow Ups', icon: FileText },
   { href: '/ai-insights', label: 'AI Insights', icon: Sparkles },
   { href: '/documents', label: 'Documents', icon: File },
-  { href: '/dashboard/admin/staff', label: 'Manage Staff', icon: UserCog, role: 'admin' },
+  { href: '/staff', label: 'Staff Management', icon: UserCog, role: 'admin' },
   // Add more links here with their required roles
 ];
 

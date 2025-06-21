@@ -10,13 +10,13 @@ const Sidebar: React.FC = () => {
 
   const navigation = [
     { href: '/dashboard', label: 'Dashboard' },
-    { href: '/contacts', label: 'Contacts', roles: ['admin', 'staff'] },
+    { href: '/clients', label: 'Clients', roles: ['admin', 'staff'] },
     { href: '/deals', label: 'Deals', roles: ['admin', 'staff'] },
-    { href: '/reports', label: 'Reports', roles: ['admin'] },
+    { href: '/reports', label: 'Reports', roles: ['admin', 'staff'] },
     { href: '/follow-ups', label: 'Follow Ups', roles: ['admin', 'staff'] },
     { href: '/ai-insights', label: 'AI Insights', roles: ['admin', 'staff'] },
     { href: '/documents', label: 'Documents', roles: ['admin', 'staff'] },
-    { href: '/dashboard/admin/staff', label: 'Manage Staff', roles: ['admin'] },
+    { href: '/staff', label: 'Staff Management', roles: ['admin'] },
     // Add other navigation items here
   ];
 

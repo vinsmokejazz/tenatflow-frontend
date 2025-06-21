@@ -23,7 +23,7 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const { signUp, supabase } = useAuth()
+  const { signUp } = useAuth()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,8 +34,10 @@ export default function SignUpPage() {
       return
     }
 
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters')
+    // Check password requirements
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+    if (!passwordRegex.test(formData.password)) {
+      toast.error('Password must be at least 8 characters and contain uppercase, lowercase, number, and special character')
       return
     }
 
@@ -43,9 +45,8 @@ export default function SignUpPage() {
 
     try {
       const userData = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        company_name: formData.companyName,
+        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        business_name: formData.companyName,
         role: formData.role
       }
 
@@ -54,16 +55,25 @@ export default function SignUpPage() {
       if (error) {
         toast.error(error.message)
       } else {
-        // Check if email confirmation is required by Supabase settings
-        if (supabase && supabase.auth.session?.user?.user_metadata?.email_verified === false) {
-          toast.success('Account created successfully! Please check your email to verify your account.');
+        // Check if we have backend registration success
+        if (data?.backend) {
+          if (data.userExists) {
+            toast.success('Account updated successfully! You can now sign in.')
+          } else {
+            toast.success('Account created successfully! You can now sign in.')
+          }
+          router.push('/signin')
         } else {
-          toast.success('Account created successfully!');
+          toast.error('Registration failed. Please try again.')
         }
-        router.push('/signin');
       }
     } catch (error) {
-      toast.error('An unexpected error occurred')
+      console.error('Signup error:', error)
+      if (error instanceof Error) {
+        toast.error(error.message)
+      } else {
+        toast.error('An unexpected error occurred')
+      }
     } finally {
       setLoading(false)
     }

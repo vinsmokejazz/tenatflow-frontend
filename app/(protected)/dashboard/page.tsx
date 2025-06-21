@@ -11,6 +11,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { apiClient } from '@/lib/api';
+import { useAuth } from '@/context/auth-context';
 import {
   Select,
   SelectContent,
@@ -27,24 +28,48 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [filterRole, setFilterRole] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const { user } = useAuth();
 
   useEffect(() => {
     async function fetchDashboard() {
+      if (!user) {
+        setError('User not authenticated');
+        setLoading(false);
+        return;
+      }
+      
       setLoading(true);
       setError(null);
       try {
-        const stats = await apiClient.getDashboardStats();
+        // Get user data from backend to get the correct business ID
+        const userData = await apiClient.getUser();
+        const businessId = userData.businessId;
+        
+        if (!businessId) {
+          setError('No business ID found for user');
+          setLoading(false);
+          return;
+        }
+
+        console.log('Fetching dashboard data for businessId:', businessId);
+        console.log('DASHBOARD: businessId from backend user:', businessId);
+        
+        const stats = await apiClient.getDashboardStats(businessId);
+        console.log('Dashboard stats:', stats);
         setKpi(stats.kpi || {});
         setChartData(stats.chartData || []);
+        
         const analytics = await apiClient.getAnalytics();
+        console.log('Analytics data:', analytics);
         setActivities(analytics.activities || []);
       } catch (err: any) {
+        console.error('Dashboard fetch error:', err);
         setError(err.message || 'Failed to load dashboard data');
       }
       setLoading(false);
     }
     fetchDashboard();
-  }, []);
+  }, [user]);
 
   return (
     <div className="space-y-8 px-4 md:px-6 py-6">

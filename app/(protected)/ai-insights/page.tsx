@@ -19,8 +19,16 @@ const AIInsightsPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiClient.customRequest('/ai-insights');
-      setInsights(data.insights || []);
+      const data = await apiClient.getAIInsights();
+      // The backend returns an object with different insight types, not an array
+      const allInsights = [
+        data.clientInsights,
+        data.leadInsights,
+        data.followUpInsights,
+        data.performanceInsights,
+        ...(data.recommendations || [])
+      ].filter(Boolean); // Remove any undefined/null values
+      setInsights(allInsights);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch AI insights');
       toast({ title: 'Error', description: err.message || 'Failed to fetch AI insights', variant: 'destructive' });
