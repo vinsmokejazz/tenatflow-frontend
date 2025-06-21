@@ -48,6 +48,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
+    // Only initialize if Supabase is available
+    if (!supabase) {
+      console.warn('Supabase not configured, skipping auth initialization')
+      setLoading(false)
+      return
+    }
+
     // Get initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       console.log('Initial session check:', {
@@ -91,6 +98,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('SignIn attempt:', { email })
       
+      if (!supabase) {
+        throw new Error('Supabase not configured')
+      }
+      
       // First authenticate with Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -133,6 +144,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, userData: any) => {
     try {
       console.log('SignUp attempt:', { email, userData })
+      
+      if (!supabase) {
+        throw new Error('Supabase not configured')
+      }
       
       // First check if user already exists in Supabase
       try {
@@ -229,13 +244,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setBackendUser(null)
       apiClient.setToken('')
       
-      // Sign out from Supabase
-      const { error } = await supabase.auth.signOut()
-      
-      if (error) {
-        console.error('Supabase sign out error:', error)
-      } else {
-        console.log('Sign out successful')
+      // Sign out from Supabase if available
+      if (supabase) {
+        const { error } = await supabase.auth.signOut()
+        
+        if (error) {
+          console.error('Supabase sign out error:', error)
+        } else {
+          console.log('Sign out successful')
+        }
       }
       
       // Ensure user state is cleared
