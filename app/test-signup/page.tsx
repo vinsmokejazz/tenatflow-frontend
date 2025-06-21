@@ -1,118 +1,118 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { apiClient } from '@/lib/api'
-import { toast } from 'sonner'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
 
-export default function TestSignupPage() {
-  const [formData, setFormData] = useState({
-    email: 'test@example.com',
-    password: 'TestPassword123!',
-    name: 'Test User',
-    business_name: 'Test Business'
-  })
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<any>(null)
+export default function TestSignup() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { user, backendUser, loading: authLoading } = useAuth();
+  const supabase = createClientComponentClient();
+  const router = useRouter();
+  const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setResult(null)
-
-    try {
-      console.log('Testing signup with:', formData)
-      const response = await apiClient.register(formData)
-      setResult({ success: true, data: response })
-      toast.success('Signup test successful!')
-    } catch (error) {
-      console.error('Signup test failed:', error)
-      setResult({ success: false, error: error instanceof Error ? error.message : String(error) })
-      toast.error('Signup test failed')
-    } finally {
-      setLoading(false)
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (!authLoading && (user || backendUser)) {
+      router.replace('/dashboard');
     }
-  }
+  }, [user, backendUser, authLoading, router]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h1 className="text-2xl font-bold mb-6">Test Signup</h1>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                value={formData.password}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                name="name"
-                type="text"
-                value={formData.name}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="business_name">Business Name</Label>
-              <Input
-                id="business_name"
-                name="business_name"
-                type="text"
-                value={formData.business_name}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loading}
-            >
-              {loading ? 'Testing...' : 'Test Signup'}
-            </Button>
-          </form>
-
-          {result && (
-            <div className={`mt-4 p-4 rounded ${result.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-              <h3 className="font-semibold">{result.success ? 'Success' : 'Error'}</h3>
-              <pre className="mt-2 text-sm overflow-auto">
-                {JSON.stringify(result, null, 2)}
-              </pre>
-            </div>
-          )}
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
+    );
+  }
+
+  // Don't render form if user is authenticated
+  if (user || backendUser) {
+    return null;
+  }
+
+  const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Check your email for the confirmation link.",
+      });
+      setEmail("");
+      setPassword("");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-2xl">Test Signup</CardTitle>
+          <CardDescription>
+            Create a test account to verify the signup flow.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSignup}>
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="m@example.com"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Creating Account..." : "Create Account"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
-  )
+  );
 } 

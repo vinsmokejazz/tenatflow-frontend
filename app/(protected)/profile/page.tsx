@@ -101,16 +101,26 @@ const ProfilePage: React.FC = () => {
       toast({ title: 'Error', description: 'New passwords do not match', variant: 'destructive' });
       return;
     }
-    if (passwordForm.newPassword.length < 6) {
-      toast({ title: 'Error', description: 'Password must be at least 6 characters', variant: 'destructive' });
+    if (passwordForm.newPassword.length < 8) {
+      toast({ title: 'Error', description: 'Password must be at least 8 characters', variant: 'destructive' });
+      return;
+    }
+
+    // Check password complexity
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(passwordForm.newPassword)) {
+      toast({ 
+        title: 'Error', 
+        description: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character', 
+        variant: 'destructive' 
+      });
       return;
     }
 
     setPasswordLoading(true);
     try {
-      // Note: This would need a proper password update endpoint
-      // await apiClient.updatePassword(passwordForm.currentPassword, passwordForm.newPassword);
-      toast({ title: 'Password updated', description: 'Your password has been updated successfully.' });
+      await apiClient.updatePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      toast({ title: 'Success', description: 'Your password has been updated successfully.' });
       setPasswordEditMode(false);
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (err: any) {

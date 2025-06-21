@@ -1,112 +1,99 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { Database } from "@/types/supabase"; // Adjust the import path as needed
-import { Button } from "@/components/ui/button"; // Adjust the import path as needed
-import { Input } from "@/components/ui/input"; // Adjust the import path as needed
-import { Label } from "@/components/ui/label"; // Adjust the import path as needed
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"; // Adjust the import path as needed
-import { useToast } from "@/hooks/use-toast"; // Adjust the import path as needed
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
 
-const supabase = createClientComponentClient<Database>();
-
-export default function ResetPasswordPage() {
+export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isValidToken, setIsValidToken] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { user, backendUser, loading: authLoading } = useAuth();
+  const supabase = createClientComponentClient();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
 
+  // Redirect authenticated users to dashboard
   useEffect(() => {
-    // Supabase automatically handles the token exchange for the user session
-    // upon landing on this page via the email link.
-    // We can check if a session exists to confirm token validity.
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data?.session) {
-        setIsValidToken(true);
-      } else {
-        // Redirect or show an error if the token is invalid or expired
-        toast({
-          title: "Invalid or expired token",
-          description: "Please request a new password reset link.",
-          variant: "destructive",
-        });
-        // Optional: Redirect to forgot password page or home
-        // router.push('/forgot-password');
-      }
-    };
+    if (!authLoading && (user || backendUser)) {
+      router.replace('/dashboard');
+    }
+  }, [user, backendUser, authLoading, router]);
 
-    checkSession();
-  }, [toast]); // Re-run if toast hook changes (unlikely, but good practice)
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
+  // Don't render form if user is authenticated
+  if (user || backendUser) {
+    return null;
+  }
 
-  const handleResetPassword = async (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
+    
     if (password !== confirmPassword) {
       toast({
-        title: "Passwords do not match",
-        description: "Please ensure the passwords match.",
+        title: "Error",
+        description: "Passwords do not match.",
         variant: "destructive",
       });
-      setIsSubmitting(false);
       return;
     }
 
-    if (!password) {
-         toast({
-            title: "Password cannot be empty",
-            description: "Please enter a new password.",
-            variant: "destructive",
-         });
-         setIsSubmitting(false);
-         return;
+    if (password.length < 8) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 8 characters long.",
+        variant: "destructive",
+      });
+      return;
     }
 
+    setLoading(true);
 
-    // The user's session should already be established by Supabase when landing on this page.
-    // We can directly update the user's password.
-    const { error } = await supabase.auth.updateUser({ password });
+    const { error } = await supabase.auth.updateUser({
+      password: password,
+    });
 
     if (error) {
       toast({
-        title: "Error resetting password",
+        title: "Error",
         description: error.message,
         variant: "destructive",
       });
     } else {
       toast({
-        title: "Password reset successful",
-        description: "You can now sign in with your new password.",
+        title: "Success",
+        description: "Password has been reset successfully.",
       });
-      router.push("/signin"); // Redirect to signin page after successful reset
+      router.push("/signin");
     }
-
-    setIsSubmitting(false);
+    setLoading(false);
   };
-
-  if (!isValidToken) {
-    // Optionally render a loading state or a message while checking token validity,
-    // or if the token is found to be invalid after the effect runs.
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Checking token validity...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
-          <CardDescription>Enter your new password below.</CardDescription>
+          <CardTitle className="text-2xl">Reset Password</CardTitle>
+          <CardDescription>
+            Enter your new password below.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleResetPassword}>
@@ -116,27 +103,27 @@ export default function ResetPasswordPage() {
                 <Input
                   id="password"
                   type="password"
+                  placeholder="Enter new password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
+                  placeholder="Confirm new password"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full"
                 />
               </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Resetting..." : "Reset Password"}
+              </Button>
             </div>
-            <Button type="submit" className="w-full mt-6" disabled={isSubmitting}>
-              {isSubmitting ? "Resetting..." : "Reset Password"}
-            </Button>
           </form>
         </CardContent>
       </Card>

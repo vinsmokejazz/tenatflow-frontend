@@ -1,51 +1,72 @@
-'use client';
+"use client";
 
-import { ApiTest } from '@/components/debug/ApiTest';
-import { useAuth } from '@/context/auth-context';
-import { useEffect, useState } from 'react';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
+import { ApiTest } from "@/components/debug/ApiTest";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function DebugPage() {
-  const { user, loading } = useAuth();
-  const [authStatus, setAuthStatus] = useState<any>(null);
+  const { user, backendUser, loading: authLoading, signOut } = useAuth();
+  const router = useRouter();
 
+  // Redirect authenticated users to dashboard
   useEffect(() => {
-    // Test authentication status
-    const testAuth = async () => {
-      try {
-        const session = await fetch('/api/auth/session').catch(() => null);
-        setAuthStatus({
-          user: user ? {
-            id: user.id,
-            email: user.email,
-            hasMetadata: !!user.user_metadata
-          } : null,
-          loading,
-          session: session ? 'Available' : 'Not available'
-        });
-      } catch (error) {
-        setAuthStatus({ error: error instanceof Error ? error.message : String(error) });
-      }
-    };
-
-    if (!loading) {
-      testAuth();
+    if (!authLoading && (user || backendUser)) {
+      router.replace('/dashboard');
     }
-  }, [user, loading]);
+  }, [user, backendUser, authLoading, router]);
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render debug page if user is authenticated
+  if (user || backendUser) {
+    return null;
+  }
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">API Debug Page</h1>
-      
-      {/* Authentication Status */}
-      <div className="mb-6 p-4 bg-gray-100 rounded">
-        <h2 className="text-lg font-semibold mb-2">Authentication Status</h2>
-        <pre className="text-sm">
-          {JSON.stringify(authStatus, null, 2)}
-        </pre>
-      </div>
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6">Debug Page</h1>
+        <p className="text-muted-foreground mb-8">
+          This page is for testing API endpoints and debugging authentication issues.
+        </p>
+        
+        <div className="grid gap-6 mb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Authentication Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p><strong>Loading:</strong> {authLoading ? 'Yes' : 'No'}</p>
+                <p><strong>Supabase User:</strong> {user ? 'Logged In' : 'Not Logged In'}</p>
+                <p><strong>Backend User:</strong> {backendUser ? 'Logged In' : 'Not Logged In'}</p>
+              </div>
+              <Button onClick={handleSignOut} className="mt-4">
+                Sign Out
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* API Tests */}
-      <ApiTest />
+        <ApiTest />
+      </div>
     </div>
   );
 } 

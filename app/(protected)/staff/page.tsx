@@ -92,8 +92,14 @@ export default function StaffManagementPage() {
     e.preventDefault();
     setInviteLoading(true);
     try {
-      await apiClient.createUser({ email, name, role });
-      toast.success(`Invitation sent to ${email}!`);
+      const response = await apiClient.createUser({ email, name, role });
+      if (response.tempPassword) {
+        toast.success(`Invitation sent to ${email}! Temporary password: ${response.tempPassword}`, {
+          duration: 10000, // Show for 10 seconds
+        });
+      } else {
+        toast.success(`Invitation sent to ${email}!`);
+      }
       setInviteModalOpen(false);
       fetchStaff();
     } catch (error: any) {

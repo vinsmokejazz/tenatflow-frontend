@@ -94,8 +94,14 @@ export default function ManageStaffPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await apiClient.createUser({ email, role });
-      toast.success(`Invitation sent to ${email}!`);
+      const response = await apiClient.createUser({ email, role });
+      if (response.tempPassword) {
+        toast.success(`Invitation sent to ${email}! Temporary password: ${response.tempPassword}`, {
+          duration: 10000, // Show for 10 seconds
+        });
+      } else {
+        toast.success(`Invitation sent to ${email}!`);
+      }
       setEmail("");
       setRole("staff");
       setIsModalOpen(false);
@@ -141,8 +147,14 @@ export default function ManageStaffPage() {
   const handleResendInvite = async (user: any) => {
     setResendLoadingId(user.id);
     try {
-      await apiClient.resendInvite(user.id);
-      toast.success(`Invitation resent to ${user.email}`);
+      const response = await apiClient.resendInvite(user.id);
+      if (response.tempPassword) {
+        toast.success(`Invitation resent to ${user.email}! New temporary password: ${response.tempPassword}`, {
+          duration: 10000, // Show for 10 seconds
+        });
+      } else {
+        toast.success(`Invitation resent to ${user.email}`);
+      }
       fetchStaff();
     } catch (error: any) {
       toast.error(error.message || "Failed to resend invitation");

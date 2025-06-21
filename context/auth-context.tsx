@@ -71,10 +71,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           hasToken: !!session?.access_token,
           tokenLength: session?.access_token?.length || 0
         });
+        
         setUser(session?.user ?? null)
         if (session?.access_token) {
           await fetchBackendUser(session.access_token)
         } else {
+          console.log('Clearing backend user state due to no session')
           apiClient.setToken('')
           setBackendUser(null)
         }
@@ -220,9 +222,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
-    apiClient.setToken('')
-    setBackendUser(null)
+    try {
+      console.log('Signing out...')
+      
+      // Clear backend user state immediately
+      setBackendUser(null)
+      apiClient.setToken('')
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut()
+      
+      if (error) {
+        console.error('Supabase sign out error:', error)
+      } else {
+        console.log('Sign out successful')
+      }
+      
+      // Ensure user state is cleared
+      setUser(null)
+    } catch (error) {
+      console.error('Sign out error:', error)
+      // Even if there's an error, clear the states
+      setUser(null)
+      setBackendUser(null)
+      apiClient.setToken('')
+    }
   }
 
   const hasRole = (role?: 'admin' | 'staff'): boolean => {

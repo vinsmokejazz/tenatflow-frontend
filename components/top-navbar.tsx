@@ -22,8 +22,17 @@ const TopNavbar: React.FC = () => {
   React.useEffect(() => { setMounted(true); }, []);
 
   const handleSignOut = async () => {
-    await signOut();
-    router.push('/');
+    try {
+      await signOut();
+      // Wait a moment for state to clear, then redirect
+      setTimeout(() => {
+        router.push('/');
+      }, 100);
+    } catch (error) {
+      console.error('Sign out error:', error);
+      // Even if there's an error, redirect to home
+      router.push('/');
+    }
   };
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
