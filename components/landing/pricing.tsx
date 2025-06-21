@@ -1,13 +1,21 @@
 'use client'
 
+import { useState } from 'react'
 import { Check, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { useAuth } from '@/context/auth-context'
+import { useToast } from '@/hooks/use-toast'
+import { apiClient } from '@/lib/api'
+import { loadStripe } from '@stripe/stripe-js'
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 const plans = [
   {
+    id: 'free',
     name: 'Free',
     price: '$0',
     period: '/month',
@@ -20,11 +28,13 @@ const plans = [
       'Standard support',
       '5 GB storage'
     ],
-    popular: false
+    popular: false,
+    stripePriceId: null
   },
   {
+    id: 'pro',
     name: 'Professional',
-    price: '$79',
+    price: '$29',
     period: '/month',
     description: 'Best for growing teams and businesses',
     features: [
@@ -37,11 +47,13 @@ const plans = [
       'Custom integrations',
       'Advanced reporting'
     ],
-    popular: true
+    popular: true,
+    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID
   },
   {
+    id: 'enterprise',
     name: 'Enterprise',
-    price: '$199',
+    price: '$99',
     period: '/month',
     description: 'For large organizations with complex needs',
     features: [
@@ -54,11 +66,90 @@ const plans = [
       'White-label solution',
       'Custom development',
     ],
-    popular: false
+    popular: false,
+    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_PRICE_ID
   }
 ]
 
 export function Pricing() {
+  const [loading, setLoading] = useState<string | null>(null)
+  const { user, backendUser } = useAuth()
+  const { toast } = useToast()
+
+  const handleSubscribe = async (planId: string, planName: string) => {
+    try {
+      setLoading(planId)
+
+      // If user is not authenticated, redirect to signup
+      if (!user && !backendUser) {
+        window.location.href = `/signup?plan=${planId}`
+        return
+      }
+
+      // If it's a free plan, handle differently
+      if (planId === 'free') {
+        // For free plan, just show success message
+        toast({
+          title: 'Success',
+          description: 'You are already on the free plan!',
+        })
+        return
+      }
+
+      // Create checkout session
+      const response = await apiClient.createCheckoutSession(
+        planId,
+        `${window.location.origin}/subscription?success=true`,
+        `${window.location.origin}/subscription?canceled=true`
+      )
+
+      const { sessionId } = response
+
+      // Redirect to Stripe Checkout
+      const stripe = await stripePromise
+      if (!stripe) {
+        throw new Error('Stripe failed to load')
+      }
+
+      const { error } = await stripe.redirectToCheckout({
+        sessionId,
+      })
+
+      if (error) {
+        throw error
+      }
+
+    } catch (error: any) {
+      console.error('Subscription error:', error)
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to start subscription',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const getButtonText = (planId: string, isLoading: boolean) => {
+    if (isLoading) {
+      return 'Processing...'
+    }
+    
+    if (planId === 'free') {
+      return 'Current Plan'
+    }
+    
+    return 'Start Free Trial'
+  }
+
+  const getButtonVariant = (plan: any) => {
+    if (plan.id === 'free') {
+      return 'outline'
+    }
+    return plan.popular ? 'default' : 'outline'
+  }
+
   return (
     <section id="pricing" className="py-20 relative overflow-hidden">
       {/* Soft gradient background */}
@@ -120,28 +211,32 @@ export function Pricing() {
                 ))}
               </ul>
 
-              <Link href="/signup" className="block">
-                <Button 
-                  className={`w-full transition-transform duration-200 group-hover:scale-105
-                    ${plan.popular 
-                      ? 'bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 shadow-lg' 
-                      : ''
-                    }`}
-                  variant={plan.popular ? 'default' : 'outline'}
-                >
-                  Start Free Trial
-                </Button>
-              </Link>
+              <Button 
+                className={`w-full transition-transform duration-200 group-hover:scale-105
+                  ${plan.popular 
+                    ? 'bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 shadow-lg' 
+                    : ''
+                  }`}
+                variant={getButtonVariant(plan)}
+                onClick={() => handleSubscribe(plan.id, plan.name)}
+                disabled={loading === plan.id || plan.id === 'free'}
+              >
+                {loading === plan.id ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Processing...
+                  </>
+                ) : (
+                  getButtonText(plan.id, false)
+                )}
+              </Button>
             </motion.div>
           ))}
         </div>
 
         <div className="text-center mt-12">
           <p className="text-muted-foreground">
-            All plans include a 14-day free trial. No credit card required.{' '}
-            <Link href="/contact" className="text-primary hover:underline">
-              Need a custom plan?
-            </Link>
+            Pro plan includes a 14-day free trial. No credit card required.{' '}
           </p>
         </div>
       </div>
