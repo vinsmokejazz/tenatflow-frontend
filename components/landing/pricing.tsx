@@ -8,12 +8,12 @@ import Link from 'next/link'
 
 const plans = [
   {
-    name: 'Starter',
-    price: '$29',
+    name: 'Free',
+    price: '$0',
     period: '/month',
     description: 'Perfect for small businesses and startups',
     features: [
-      'Up to 1,000 contacts',
+      'Up to 10 tenants',
       'Basic CRM features',
       'Email integration',
       'Mobile app access',
@@ -28,7 +28,7 @@ const plans = [
     period: '/month',
     description: 'Best for growing teams and businesses',
     features: [
-      'Up to 10,000 contacts',
+      'Up to 50 tenants',
       'Advanced analytics',
       'AI-powered insights',
       'Workflow automation',
@@ -45,7 +45,7 @@ const plans = [
     period: '/month',
     description: 'For large organizations with complex needs',
     features: [
-      'Unlimited contacts',
+      'Unlimited tenants',
       'Full feature access',
       'Custom AI models',
       'Advanced security',
@@ -53,7 +53,6 @@ const plans = [
       'Unlimited storage',
       'White-label solution',
       'Custom development',
-      'SLA guarantee'
     ],
     popular: false
   }
@@ -61,8 +60,10 @@ const plans = [
 
 export function Pricing() {
   return (
-    <section id="pricing" className="py-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="pricing" className="py-20 relative overflow-hidden">
+      {/* Soft gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-emerald-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 pointer-events-none" />
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -87,15 +88,14 @@ export function Pricing() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
               viewport={{ once: true }}
-              className={`relative p-8 bg-card rounded-2xl border transition-all duration-300 hover:shadow-xl ${
-                plan.popular 
-                  ? 'border-primary shadow-lg scale-105' 
-                  : 'border-border hover:border-primary/20'
-              }`}
+              className={`relative p-8 bg-card rounded-2xl border transition-all duration-300 group
+                ${plan.popular ? 'border-primary shadow-2xl scale-105 z-10' : 'border-border hover:border-primary/20 hover:shadow-xl'}
+              `}
+              style={plan.popular ? { boxShadow: '0 8px 32px 0 rgba(16, 185, 129, 0.15)' } : {}}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <Badge className="bg-gradient-to-r from-blue-600 to-emerald-600 text-white px-4 py-1">
+                  <Badge className="bg-gradient-to-r from-blue-600 to-emerald-600 text-white px-4 py-1 shadow-lg">
                     <Star className="h-3 w-3 mr-1" />
                     Most Popular
                   </Badge>
@@ -122,11 +122,11 @@ export function Pricing() {
 
               <Link href="/signup" className="block">
                 <Button 
-                  className={`w-full ${
-                    plan.popular 
-                      ? 'bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700' 
+                  className={`w-full transition-transform duration-200 group-hover:scale-105
+                    ${plan.popular 
+                      ? 'bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 shadow-lg' 
                       : ''
-                  }`}
+                    }`}
                   variant={plan.popular ? 'default' : 'outline'}
                 >
                   Start Free Trial

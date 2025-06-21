@@ -91,10 +91,10 @@ export function Footer() {
 
         <div className="border-t border-border mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center">
           <p className="text-muted-foreground text-sm">
-            © 2024 TenantFlow. All rights reserved.
+            © 2025 TenantFlow. All rights reserved.
           </p>
           <p className="text-muted-foreground text-sm mt-4 sm:mt-0">
-            Made with ❤️ for modern businesses
+            Made with ❤️ for modern businesses<br/> by venu
           </p>
         </div>
       </div>

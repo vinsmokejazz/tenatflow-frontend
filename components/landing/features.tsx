@@ -89,11 +89,11 @@ export function Features() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
               viewport={{ once: true }}
-              className="p-6 bg-card rounded-lg border border-border hover:shadow-lg transition-all duration-300 hover:border-primary/20"
+              className="p-6 bg-card rounded-lg border border-border hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 hover:border-primary/40 group"
             >
               <div className="flex items-center mb-4">
-                <div className="p-2 bg-primary/10 rounded-lg mr-4">
-                  <feature.icon className="h-6 w-6 text-primary" />
+                <div className="p-3 rounded-lg mr-4 transition-all duration-300 group-hover:scale-110 group-hover:bg-gradient-to-r group-hover:from-blue-500 group-hover:to-emerald-500 bg-primary/10">
+                  <feature.icon className="h-7 w-7 text-primary group-hover:text-white transition-colors duration-300" />
                 </div>
                 <h3 className="text-xl font-semibold text-foreground">{feature.title}</h3>
               </div>

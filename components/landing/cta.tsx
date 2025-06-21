@@ -7,7 +7,7 @@ import { motion } from 'framer-motion'
 
 export function CTA() {
   return (
-    <section className="py-20 bg-gradient-to-br from-blue-600 via-blue-700 to-emerald-600">
+    <section className="py-20 bg-gradient-to-br from-blue-950 via-purple-800 to-emerald-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <motion.div
@@ -16,7 +16,7 @@ export function CTA() {
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+            <h2 className="text-3xl md:text-4xl font-bold  mb-6 bg-clip-text text-transparent drop-shadow-2xl bg-gradient-to-b from-white/80 to-white/20">
               Ready to transform your business?
             </h2>
             <p className="text-xl text-blue-100 max-w-2xl mx-auto mb-8">

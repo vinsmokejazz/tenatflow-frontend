@@ -8,13 +8,19 @@ import { Navbar } from '@/components/landing/navbar'
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background scroll-smooth pt-24">
       <Navbar />
-      <Hero />
-      <Features />
-      <Pricing />
-      <Testimonials />
-      <CTA />
+      <main className="flex flex-col gap-0">
+        <Hero />
+        <div className="w-full h-px bg-border my-0" />
+        <Features />
+        <div className="w-full h-px bg-border my-0" />
+        <Pricing />
+        <div className="w-full h-px bg-border my-0" />
+        <Testimonials />
+        <div className="w-full h-px bg-border my-0" />
+        <CTA />
+      </main>
       <Footer />
     </div>
   )
