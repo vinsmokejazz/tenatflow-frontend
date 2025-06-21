@@ -379,6 +379,69 @@ class ApiClient {
   async getClientDetails(clientId: string) {
     return this.request(`/clients/${clientId}/details`);
   }
+
+  // Subscription endpoints
+  async getSubscriptionPlans() {
+    return this.request('/subscription/plans');
+  }
+
+  async getCurrentSubscription() {
+    return this.request('/subscription/current');
+  }
+
+  async getSubscriptionUsage() {
+    return this.request('/subscription/usage');
+  }
+
+  async createSubscription(planId: string, paymentMethodId?: string) {
+    return this.request('/subscription/create', {
+      method: 'POST',
+      body: JSON.stringify({ planId, paymentMethodId }),
+    });
+  }
+
+  async updateSubscription(planId: string) {
+    return this.request('/subscription/update', {
+      method: 'PUT',
+      body: JSON.stringify({ planId }),
+    });
+  }
+
+  async cancelSubscription() {
+    return this.request('/subscription/cancel', {
+      method: 'POST',
+    });
+  }
+
+  async reactivateSubscription() {
+    return this.request('/subscription/reactivate', {
+      method: 'POST',
+    });
+  }
+
+  async downgradeToFree() {
+    return this.request('/subscription/downgrade', {
+      method: 'POST',
+    });
+  }
+
+  async createPaymentIntent(planId: string) {
+    return this.request('/subscription/payment-intent', {
+      method: 'POST',
+      body: JSON.stringify({ planId }),
+    });
+  }
+
+  async createCheckoutSession(planId: string, successUrl?: string, cancelUrl?: string) {
+    return this.request('/subscription/create-checkout-session', {
+      method: 'POST',
+      body: JSON.stringify({ planId, successUrl, cancelUrl }),
+    });
+  }
+
+  async getSubscriptionHistory() {
+    return this.request('/subscription/history');
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL)

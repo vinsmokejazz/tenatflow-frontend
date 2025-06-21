@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Check, Crown, Star, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/api';
+import StripeCheckout from '@/components/subscription/StripeCheckout';
 
 interface SubscriptionPlan {
   id: string;
@@ -43,13 +44,12 @@ interface UsageData {
 }
 
 export default function SubscriptionPage() {
-  const { backendUser } = useAuth();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [currentSubscription, setCurrentSubscription] = useState<any>(null);
   const [usageData, setUsageData] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [upgrading, setUpgrading] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user: backendUser } = useAuth();
 
   useEffect(() => {
     fetchSubscriptionData();
@@ -59,9 +59,9 @@ export default function SubscriptionPage() {
     try {
       setLoading(true);
       const [plansResponse, subscriptionResponse, usageResponse] = await Promise.all([
-        apiClient.get('/subscription/plans'),
-        apiClient.get('/subscription/current'),
-        apiClient.get('/subscription/usage'),
+        apiClient.getSubscriptionPlans(),
+        apiClient.getCurrentSubscription(),
+        apiClient.getSubscriptionUsage(),
       ]);
 
       setPlans(plansResponse.plans);
@@ -79,42 +79,9 @@ export default function SubscriptionPage() {
     }
   };
 
-  const handleUpgrade = async (planId: string) => {
-    try {
-      setUpgrading(planId);
-      
-      // Create payment intent
-      const { clientSecret } = await apiClient.post('/subscription/payment-intent', {
-        planId,
-      });
-
-      // Redirect to Stripe Checkout or handle payment
-      // For now, we'll just show a success message
-      toast({
-        title: 'Upgrade Initiated',
-        description: `Starting upgrade to ${planId} plan...`,
-      });
-
-      // In a real implementation, you would:
-      // 1. Redirect to Stripe Checkout
-      // 2. Handle the payment confirmation
-      // 3. Update the subscription status
-      
-    } catch (error) {
-      console.error('Error upgrading subscription:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to initiate upgrade',
-        variant: 'destructive',
-      });
-    } finally {
-      setUpgrading(null);
-    }
-  };
-
   const handleDowngrade = async () => {
     try {
-      await apiClient.post('/subscription/downgrade');
+      await apiClient.downgradeToFree();
       toast({
         title: 'Success',
         description: 'Successfully downgraded to free plan',
@@ -249,7 +216,6 @@ export default function SubscriptionPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {plans.map((plan) => {
             const isCurrentPlan = currentSubscription?.subscription?.subscription === plan.id;
-            const isUpgrading = upgrading === plan.id;
 
             return (
               <Card key={plan.id} className={`relative ${isCurrentPlan ? 'ring-2 ring-primary' : ''}`}>
@@ -337,20 +303,25 @@ export default function SubscriptionPage() {
                         Downgrade to Free
                       </Button>
                     ) : (
-                      <Button 
-                        className="w-full" 
-                        onClick={() => handleUpgrade(plan.id)}
-                        disabled={isUpgrading}
-                      >
-                        {isUpgrading ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Upgrading...
-                          </>
-                        ) : (
-                          `Upgrade to ${plan.name}`
-                        )}
-                      </Button>
+                      <StripeCheckout
+                        planId={plan.id}
+                        planName={plan.name}
+                        price={plan.price}
+                        onSuccess={() => {
+                          toast({
+                            title: 'Success',
+                            description: `Successfully upgraded to ${plan.name}`,
+                          });
+                          fetchSubscriptionData();
+                        }}
+                        onCancel={() => {
+                          toast({
+                            title: 'Cancelled',
+                            description: 'Upgrade was cancelled',
+                            variant: 'destructive',
+                          });
+                        }}
+                      />
                     )}
                   </div>
                 </CardContent>
