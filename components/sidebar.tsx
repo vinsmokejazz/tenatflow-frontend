@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
-import { LayoutDashboard, Users, Briefcase, FileText, BarChart2, UserCog, File, Sparkles, Menu, X, Target } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, FileText, BarChart2, UserCog, File, Sparkles, Menu, X, Target, CreditCard } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
@@ -23,6 +23,7 @@ const navLinks: NavLink[] = [
   { href: '/follow-ups', label: 'Follow Ups', icon: FileText },
   { href: '/ai-insights', label: 'AI Insights', icon: Sparkles },
   { href: '/documents', label: 'Documents', icon: File },
+  { href: '/subscription', label: 'Subscription', icon: CreditCard },
   { href: '/staff', label: 'Staff Management', icon: UserCog, role: 'admin' },
   // Add more links here with their required roles
 ];
