@@ -22,7 +22,6 @@ const navLinks: NavLink[] = [
   { href: '/reports', label: 'Reports', icon: BarChart2 },
   { href: '/follow-ups', label: 'Follow Ups', icon: FileText },
   { href: '/ai-insights', label: 'AI Insights', icon: Sparkles },
-  { href: '/documents', label: 'Documents', icon: File },
   { href: '/subscription', label: 'Subscription', icon: CreditCard },
   { href: '/staff', label: 'Staff Management', icon: UserCog, role: 'admin' },
   // Add more links here with their required roles

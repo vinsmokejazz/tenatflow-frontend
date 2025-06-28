@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
+import { dashboardUpdates } from '@/lib/dashboard-updates';
 
 const FollowUpsPage: React.FC = () => {
   const [loading, setLoading] = React.useState(true);
@@ -153,6 +154,9 @@ const FollowUpsPage: React.FC = () => {
           )
         );
         toast({ title: 'Follow-up updated', description: 'Follow-up updated successfully.' });
+        
+        // Notify dashboard of follow-up update
+        dashboardUpdates.onFollowUpChange('updated', { followUpId: editFollowUp.id });
       } else {
         console.log('Creating new follow-up');
         const newFollowUp = await apiClient.createFollowUp(formData);
@@ -162,6 +166,9 @@ const FollowUpsPage: React.FC = () => {
         
         setFollowUps(prevFollowUps => [newFollowUp, ...prevFollowUps]);
         toast({ title: 'Follow-up added', description: 'Follow-up added successfully.' });
+        
+        // Notify dashboard of new follow-up
+        dashboardUpdates.onFollowUpChange('created', { followUpId: newFollowUp.id });
       }
       setModalOpen(false);
     } catch (err: any) {
@@ -181,6 +188,9 @@ const FollowUpsPage: React.FC = () => {
       setFollowUps(prevFollowUps => prevFollowUps.filter(followUp => followUp.id !== deleteId));
       setDeleteId(null);
       toast({ title: 'Deleted', description: 'Follow-up deleted successfully.' });
+      
+      // Notify dashboard of follow-up deletion
+      dashboardUpdates.onFollowUpChange();
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to delete follow-up.', variant: 'destructive' });
     }

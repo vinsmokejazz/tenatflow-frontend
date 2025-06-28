@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { apiClient } from '@/lib/api';
+import { dashboardUpdates } from '@/lib/dashboard-updates';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
@@ -122,6 +123,9 @@ const ClientsPage: React.FC = () => {
           )
         );
         toast({ title: 'Client updated', description: 'Client updated successfully.' });
+        
+        // Notify dashboard of client update
+        dashboardUpdates.onClientChange('updated', { clientId: editClient.id });
       } else {
         const newClient = await apiClient.createClient(form);
         setClients(prevClients => [newClient, ...prevClients]);
@@ -140,6 +144,9 @@ const ClientsPage: React.FC = () => {
         }
         
         toast({ title: 'Client added', description: 'Client added successfully.' });
+        
+        // Notify dashboard of new client
+        dashboardUpdates.onClientChange('created', { clientId: newClient.id });
       }
       setModalOpen(false);
     } catch (err: any) {
@@ -168,6 +175,9 @@ const ClientsPage: React.FC = () => {
       setClients(prevClients => prevClients.filter(client => client.id !== deleteId));
       setDeleteId(null);
       toast({ title: 'Deleted', description: 'Client deleted successfully.' });
+      
+      // Notify dashboard of client deletion
+      dashboardUpdates.onClientChange();
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to delete client.', variant: 'destructive' });
     }

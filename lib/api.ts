@@ -442,6 +442,14 @@ class ApiClient {
   async getSubscriptionHistory() {
     return this.request('/subscription/history');
   }
+
+  // Analytics update endpoint
+  async updateAnalytics(businessId: string, days?: number) {
+    return this.request(`/analytics/update/${businessId}`, {
+      method: 'POST',
+      body: JSON.stringify({ days })
+    });
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL)

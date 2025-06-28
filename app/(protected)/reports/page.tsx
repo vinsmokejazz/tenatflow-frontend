@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { BarChart2, FileText, Calendar, Edit, Trash2, Plus, Download, Eye, TrendingUp, Users, Target, DollarSign, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,8 @@ import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const ReportsPage: React.FC = () => {
   const [loading, setLoading] = React.useState(true);
@@ -30,6 +32,7 @@ const ReportsPage: React.FC = () => {
   const [viewLoading, setViewLoading] = React.useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  const reportContentRef = useRef<HTMLDivElement>(null);
 
   // Fetch reports from backend
   const fetchReports = async () => {
@@ -196,6 +199,22 @@ const ReportsPage: React.FC = () => {
         {config.label}
       </Badge>
     );
+  };
+
+  // PDF Download Handler
+  const handleDownloadPDF = async () => {
+    if (!reportContentRef.current) return;
+    const input = reportContentRef.current;
+    const canvas = await html2canvas(input, { scale: 2, useCORS: true });
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    // Calculate image dimensions to fit A4
+    const imgWidth = pageWidth - 40;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    pdf.addImage(imgData, 'PNG', 20, 20, imgWidth, imgHeight);
+    pdf.save(`${viewReport?.name || 'report'}.pdf`);
   };
 
   return (
@@ -484,98 +503,293 @@ const ReportsPage: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           
-          {viewLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : viewReport ? (
-            <div className="space-y-6">
-              {/* Report Header */}
-              <div className="bg-muted/50 rounded-lg p-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Report Name</p>
-                    <p className="font-semibold">{viewReport.name}</p>
+          {/* PDF content wrapper */}
+          <div ref={reportContentRef} className="print:bg-white">
+            {viewLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : viewReport ? (
+              <div className="space-y-6">
+                {/* Report Header */}
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Report Name</p>
+                      <p className="font-semibold">{viewReport.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Type</p>
+                      {getTypeBadge(viewReport.type)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Created</p>
+                      <p>{new Date(viewReport.createdAt).toLocaleDateString()}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Type</p>
-                    {getTypeBadge(viewReport.type)}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Created</p>
-                    <p>{new Date(viewReport.createdAt).toLocaleDateString()}</p>
-                  </div>
+                </div>
+
+                {/* Report Data */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Report Data</h3>
+                  
+                  {/* Display report data based on type */}
+                  {viewReport.type === 'leads' && viewReport.data && (
+                    <div className="space-y-6">
+                      {/* Leads Summary */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-card border border-border rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Total Leads</p>
+                              <p className="text-2xl font-bold">{viewReport.data.totalLeads || 0}</p>
+                            </div>
+                            <Target className="h-6 w-6 text-blue-600" />
+                          </div>
+                        </div>
+                        
+                        <div className="bg-card border border-border rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Conversion Rate</p>
+                              <p className="text-2xl font-bold">{viewReport.data.conversionRate ? `${viewReport.data.conversionRate.toFixed(1)}%` : '0%'}</p>
+                            </div>
+                            <TrendingUp className="h-6 w-6 text-green-600" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Leads by Status */}
+                      {viewReport.data.leadsByStatus && viewReport.data.leadsByStatus.length > 0 && (
+                        <div className="bg-card border border-border rounded-lg p-4">
+                          <h4 className="text-md font-semibold mb-4">Leads by Status</h4>
+                          <div className="space-y-2">
+                            {viewReport.data.leadsByStatus.map((status: any, index: number) => (
+                              <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                                <span className="capitalize font-medium">{status.status}</span>
+                                <Badge variant="secondary">{status._count.status}</Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Recent Leads */}
+                      {viewReport.data.recentLeads && viewReport.data.recentLeads.length > 0 && (
+                        <div className="bg-card border border-border rounded-lg p-4">
+                          <h4 className="text-md font-semibold mb-4">Recent Leads</h4>
+                          <div className="space-y-2">
+                            {viewReport.data.recentLeads.slice(0, 5).map((lead: any) => (
+                              <div key={lead.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                                <div>
+                                  <p className="font-medium">{lead.client?.name || 'Unknown Client'}</p>
+                                  <p className="text-sm text-muted-foreground">{lead.status}</p>
+                                </div>
+                                <Badge variant="outline">{new Date(lead.createdAt).toLocaleDateString()}</Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {viewReport.type === 'clients' && viewReport.data && (
+                    <div className="space-y-6">
+                      {/* Clients Summary */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-card border border-border rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Total Clients</p>
+                              <p className="text-2xl font-bold">{viewReport.data.totalClients || 0}</p>
+                            </div>
+                            <Users className="h-6 w-6 text-blue-600" />
+                          </div>
+                        </div>
+                        
+                        <div className="bg-card border border-border rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">With Leads</p>
+                              <p className="text-2xl font-bold">{viewReport.data.clientsWithLeads || 0}</p>
+                            </div>
+                            <Target className="h-6 w-6 text-green-600" />
+                          </div>
+                        </div>
+                        
+                        <div className="bg-card border border-border rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">With Deals</p>
+                              <p className="text-2xl font-bold">{viewReport.data.clientsWithDeals || 0}</p>
+                            </div>
+                            <DollarSign className="h-6 w-6 text-purple-600" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Top Clients */}
+                      {viewReport.data.topClients && viewReport.data.topClients.length > 0 && (
+                        <div className="bg-card border border-border rounded-lg p-4">
+                          <h4 className="text-md font-semibold mb-4">Top Clients by Lead Count</h4>
+                          <div className="space-y-2">
+                            {viewReport.data.topClients.map((client: any) => (
+                              <div key={client.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                                <div>
+                                  <p className="font-medium">{client.name}</p>
+                                  <p className="text-sm text-muted-foreground">{client.email}</p>
+                                </div>
+                                <div className="text-right">
+                                  <Badge variant="secondary">{client._count.leads} leads</Badge>
+                                  <p className="text-xs text-muted-foreground mt-1">{client._count.deals} deals</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {viewReport.type === 'followups' && viewReport.data && (
+                    <div className="space-y-6">
+                      {/* Follow-ups Summary */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-card border border-border rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Total Follow-ups</p>
+                              <p className="text-2xl font-bold">{viewReport.data.totalFollowUps || 0}</p>
+                            </div>
+                            <Calendar className="h-6 w-6 text-blue-600" />
+                          </div>
+                        </div>
+                        
+                        <div className="bg-card border border-border rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Completed</p>
+                              <p className="text-2xl font-bold">{viewReport.data.completed || 0}</p>
+                            </div>
+                            <CheckCircle className="h-6 w-6 text-green-600" />
+                          </div>
+                        </div>
+                        
+                        <div className="bg-card border border-border rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Pending</p>
+                              <p className="text-2xl font-bold">{viewReport.data.pending || 0}</p>
+                            </div>
+                            <Clock className="h-6 w-6 text-yellow-600" />
+                          </div>
+                        </div>
+                        
+                        <div className="bg-card border border-border rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Overdue</p>
+                              <p className="text-2xl font-bold">{viewReport.data.overdue || 0}</p>
+                            </div>
+                            <XCircle className="h-6 w-6 text-red-600" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Completion Rate */}
+                      <div className="bg-card border border-border rounded-lg p-4">
+                        <h4 className="text-md font-semibold mb-4">Completion Rate</h4>
+                        <div className="flex items-center gap-4">
+                          <div className="flex-1">
+                            <div className="w-full bg-muted rounded-full h-4">
+                              <div 
+                                className="bg-primary h-4 rounded-full transition-all duration-300"
+                                style={{ width: `${viewReport.data.completionRate || 0}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                          <span className="text-lg font-semibold">{viewReport.data.completionRate ? `${viewReport.data.completionRate.toFixed(1)}%` : '0%'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {viewReport.type === 'sales' && viewReport.data && (
+                    <div className="space-y-6">
+                      {/* Sales Summary */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-card border border-border rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Total Deals</p>
+                              <p className="text-2xl font-bold">{viewReport.data.totalDeals || 0}</p>
+                            </div>
+                            <DollarSign className="h-6 w-6 text-blue-600" />
+                          </div>
+                        </div>
+                        
+                        <div className="bg-card border border-border rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Total Value</p>
+                              <p className="text-2xl font-bold">${viewReport.data.totalValue ? viewReport.data.totalValue.toLocaleString() : '0'}</p>
+                            </div>
+                            <TrendingUp className="h-6 w-6 text-green-600" />
+                          </div>
+                        </div>
+                        
+                        <div className="bg-card border border-border rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Average Deal</p>
+                              <p className="text-2xl font-bold">${viewReport.data.averageDealValue ? viewReport.data.averageDealValue.toLocaleString() : '0'}</p>
+                            </div>
+                            <BarChart2 className="h-6 w-6 text-purple-600" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Deals by Stage */}
+                      {viewReport.data.dealsByStage && viewReport.data.dealsByStage.length > 0 && (
+                        <div className="bg-card border border-border rounded-lg p-4">
+                          <h4 className="text-md font-semibold mb-4">Deals by Stage</h4>
+                          <div className="space-y-2">
+                            {viewReport.data.dealsByStage.map((stage: any, index: number) => (
+                              <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                                <div>
+                                  <span className="capitalize font-medium">{stage.stage}</span>
+                                  <p className="text-sm text-muted-foreground">{stage._count.stage} deals</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-semibold">${stage._sum.value ? stage._sum.value.toLocaleString() : '0'}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Fallback for other report types or if data structure is different */}
+                  {(!viewReport.data || (viewReport.type !== 'leads' && viewReport.type !== 'clients' && viewReport.type !== 'followups' && viewReport.type !== 'sales')) && (
+                    <div className="bg-card border border-border rounded-lg p-4">
+                      <h4 className="text-md font-semibold mb-4">Report Data</h4>
+                      <div className="bg-muted/50 rounded-lg p-4">
+                        <pre className="text-sm overflow-x-auto whitespace-pre-wrap">
+                          {JSON.stringify(viewReport.data, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {/* Report Data */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Report Data</h3>
-                <div className="bg-card border border-border rounded-lg p-4">
-                  <pre className="text-sm overflow-x-auto whitespace-pre-wrap">
-                    {JSON.stringify(viewReport.data, null, 2)}
-                  </pre>
-                </div>
-              </div>
-
-              {/* Summary Cards */}
-              {viewReport.data && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {viewReport.data.totalLeads && (
-                    <div className="bg-card border border-border rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Total Leads</p>
-                          <p className="text-2xl font-bold">{viewReport.data.totalLeads}</p>
-                        </div>
-                        <Target className="h-6 w-6 text-blue-600" />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {viewReport.data.totalClients && (
-                    <div className="bg-card border border-border rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Total Clients</p>
-                          <p className="text-2xl font-bold">{viewReport.data.totalClients}</p>
-                        </div>
-                        <Users className="h-6 w-6 text-green-600" />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {viewReport.data.totalFollowUps && (
-                    <div className="bg-card border border-border rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Total Follow-ups</p>
-                          <p className="text-2xl font-bold">{viewReport.data.totalFollowUps}</p>
-                        </div>
-                        <Calendar className="h-6 w-6 text-yellow-600" />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {viewReport.data.totalDeals && (
-                    <div className="bg-card border border-border rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Total Deals</p>
-                          <p className="text-2xl font-bold">{viewReport.data.totalDeals}</p>
-                        </div>
-                        <DollarSign className="h-6 w-6 text-purple-600" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : null}
-          
+            ) : null}
+          </div>
           <DialogFooter>
             <Button onClick={() => setViewModalOpen(false)} variant="outline">Close</Button>
-            <Button className="flex items-center gap-2">
+            <Button className="flex items-center gap-2" onClick={handleDownloadPDF}>
               <Download className="h-4 w-4" />
               Download PDF
             </Button>

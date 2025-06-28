@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { apiClient } from '@/lib/api';
+import { dashboardUpdates } from '@/lib/dashboard-updates';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
@@ -123,6 +124,9 @@ const LeadsPage: React.FC = () => {
           )
         );
         toast({ title: 'Lead updated', description: 'Lead updated successfully.' });
+        
+        // Notify dashboard of lead update
+        dashboardUpdates.onLeadChange('updated', { leadId: editLead.id });
       } else {
         console.log('Creating new lead');
         const newLead = await apiClient.createLead(payload);
@@ -132,6 +136,9 @@ const LeadsPage: React.FC = () => {
         
         setLeads(prevLeads => [newLead, ...prevLeads]);
         toast({ title: 'Lead created', description: 'Lead created successfully.' });
+        
+        // Notify dashboard of new lead
+        dashboardUpdates.onLeadChange('created', { leadId: newLead.id });
       }
       setModalOpen(false);
     } catch (err: any) {
@@ -151,6 +158,9 @@ const LeadsPage: React.FC = () => {
       setLeads(prevLeads => prevLeads.filter(lead => lead.id !== deleteId));
       setDeleteId(null);
       toast({ title: 'Deleted', description: 'Lead deleted successfully.' });
+      
+      // Notify dashboard of lead deletion
+      dashboardUpdates.onLeadChange();
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to delete lead.', variant: 'destructive' });
     }
